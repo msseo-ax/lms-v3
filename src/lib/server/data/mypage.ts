@@ -9,7 +9,7 @@ import {
   isContentTargetedForUser,
   readLogs,
 } from "@/lib/mock-db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromMiddlewareHeader } from "@/lib/auth";
 import { getTargetLabels as getTargetLabelsFromData } from "@/lib/targeting";
 import { cache } from "react";
 
@@ -79,35 +79,60 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
     };
   }
 
+  // Auth user is cached per request — no redundant Supabase/DB calls
+  const authUser = await getCurrentUserFromMiddlewareHeader();
+  if (!authUser) return null;
+
   const { prisma } = await import("@/lib/prisma");
   if (!prisma) return null;
 
-  const authUser = await getCurrentUser();
-  const currentUserId = options?.userIdOverride ?? authUser?.id;
-  if (!currentUserId) return null;
+  const currentUserId = options?.userIdOverride ?? authUser.id;
 
-  const [dbUser, dbCategories] = await Promise.all([
-    prisma.user.findUnique({
+  // Own page: use auth user directly (zero DB queries for user)
+  // Admin viewing other user: single DB lookup
+  type PageUser = {
+    id: string; name: string; email: string; role: "admin" | "user";
+    divisionId: string | null; teamId: string | null;
+    avatarUrl: string | null; divisionName?: string;
+  };
+
+  let pageUser: PageUser;
+
+  if (currentUserId === authUser.id) {
+    pageUser = {
+      id: authUser.id, name: authUser.name, email: authUser.email,
+      role: authUser.role, divisionId: authUser.divisionId,
+      teamId: authUser.teamId, avatarUrl: authUser.avatarUrl,
+      divisionName: authUser.division?.name,
+    };
+  } else {
+    const dbUser = await prisma.user.findUnique({
       where: { id: currentUserId },
       include: { division: true },
-    }),
-    prisma.category.findMany({ select: { id: true, name: true } }),
-  ]);
-
-  if (!dbUser) return null;
+    });
+    if (!dbUser) return null;
+    pageUser = {
+      id: dbUser.id, name: dbUser.name, email: dbUser.email,
+      role: dbUser.role, divisionId: dbUser.divisionId,
+      teamId: dbUser.teamId, avatarUrl: dbUser.avatarUrl,
+      divisionName: dbUser.division?.name,
+    };
+  }
 
   const targetConditions: Array<{ targetType: "all" | "division" | "team" | "user"; targetId?: string }> = [
     { targetType: "all" },
-    { targetType: "user", targetId: dbUser.id },
+    { targetType: "user", targetId: pageUser.id },
   ];
 
-  if (dbUser.divisionId) {
-    targetConditions.push({ targetType: "division", targetId: dbUser.divisionId });
+  if (pageUser.divisionId) {
+    targetConditions.push({ targetType: "division", targetId: pageUser.divisionId });
   }
-  if (dbUser.teamId) {
-    targetConditions.push({ targetType: "team", targetId: dbUser.teamId });
+  if (pageUser.teamId) {
+    targetConditions.push({ targetType: "team", targetId: pageUser.teamId });
   }
-  const [targetedContents, userReadLogsCount] = await Promise.all([
+
+  const [dbCategories, targetedContents, userReadLogsCount] = await Promise.all([
+    prisma.category.findMany({ select: { id: true, name: true } }),
     prisma.content.findMany({
       where: {
         targets: {
@@ -174,12 +199,12 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
 
   return {
     currentUser: {
-      id: dbUser.id,
-      name: dbUser.name,
-      email: dbUser.email,
-      role: dbUser.role,
-      avatarUrl: dbUser.avatarUrl,
-      divisionName: dbUser.division?.name,
+      id: pageUser.id,
+      name: pageUser.name,
+      email: pageUser.email,
+      role: pageUser.role,
+      avatarUrl: pageUser.avatarUrl,
+      divisionName: pageUser.divisionName,
     },
     targetedContents: targetedContents.map((content) => ({ id: content.id })),
     readContents: readContents.map((content) => ({ id: content.id })),

@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserFromMiddlewareHeader } from "@/lib/auth";
 import {
   categories,
   contentFiles,
@@ -60,7 +60,7 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
     };
   }
 
-  const user = options?.userOverride ?? (await getCurrentUser());
+  const user = options?.userOverride ?? (await getCurrentUserFromMiddlewareHeader());
   if (!user) {
     return null;
   }
@@ -70,13 +70,8 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
     return null;
   }
 
-  const dbUserTargetContext = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { id: true, divisionId: true, teamId: true },
-  });
-
-  const effectiveDivisionId = dbUserTargetContext?.divisionId ?? user.divisionId;
-  const effectiveTeamId = dbUserTargetContext?.teamId ?? null;
+  const effectiveDivisionId = user.divisionId;
+  const effectiveTeamId = "teamId" in user && user.teamId ? user.teamId : null;
 
   const targetConditions: Array<
     | { targetType: "all" }
@@ -124,9 +119,7 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
     id: user.id,
     name: user.name,
     divisionId: effectiveDivisionId,
-    teamId:
-      effectiveTeamId ??
-      ("teamId" in user && typeof user.teamId !== "undefined" ? user.teamId : null),
+    teamId: effectiveTeamId,
   };
 
   const divisionIds = new Set<string>();
