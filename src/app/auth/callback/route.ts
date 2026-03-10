@@ -52,6 +52,7 @@ export async function GET(request: Request) {
               where: { email: user.email },
               update: {
                 name: user.user_metadata?.full_name ?? user.email.split("@")[0],
+                role: resolveRole(user.email),
                 avatarUrl: user.user_metadata?.avatar_url ?? null,
               },
               create: {
