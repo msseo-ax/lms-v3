@@ -2,7 +2,6 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { badRequest, notFound, ok, unauthorized } from "@/lib/api";
-import { isPerfScenarioName, PERF_SCENARIO_NAMES, runPerfScenario } from "@/lib/perf/scenarios";
 
 export async function GET(request: NextRequest) {
   if (process.env.NODE_ENV === "production") {
@@ -18,6 +17,8 @@ export async function GET(request: NextRequest) {
   if (token !== configuredToken) {
     return unauthorized();
   }
+
+  const { isPerfScenarioName, PERF_SCENARIO_NAMES, runPerfScenario } = await import("@/lib/perf/scenarios");
 
   const scenario = request.nextUrl.searchParams.get("scenario");
   if (!scenario) {
