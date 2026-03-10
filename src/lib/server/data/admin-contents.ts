@@ -12,6 +12,12 @@ interface TargetShape {
   targetId: string | null;
 }
 
+interface UserTargetSnapshot {
+  id: string;
+  divisionId: string | null;
+  teamId: string | null;
+}
+
 function resolveTargetLabels(
   targets: TargetShape[],
   divisions: Array<{ id: string; name: string }>,
@@ -27,6 +33,46 @@ function resolveTargetLabels(
     }
     return users.find((item) => item.id === target.targetId)?.name ?? "개인";
   });
+}
+
+function getTargetCountForContent(
+  targets: TargetShape[],
+  totalUserCount: number,
+  allUserIds: Set<string>,
+  divisionUserIdsMap: Map<string, Set<string>>,
+  teamUserIdsMap: Map<string, Set<string>>
+): number {
+  if (targets.some((target) => target.targetType === "all")) {
+    return totalUserCount;
+  }
+
+  const targetedUserIds = new Set<string>();
+
+  for (const target of targets) {
+    if (!target.targetId) continue;
+
+    if (target.targetType === "division") {
+      const divisionUsers = divisionUserIdsMap.get(target.targetId);
+      if (divisionUsers) {
+        divisionUsers.forEach((userId) => targetedUserIds.add(userId));
+      }
+      continue;
+    }
+
+    if (target.targetType === "team") {
+      const teamUsers = teamUserIdsMap.get(target.targetId);
+      if (teamUsers) {
+        teamUsers.forEach((userId) => targetedUserIds.add(userId));
+      }
+      continue;
+    }
+
+    if (target.targetType === "user" && allUserIds.has(target.targetId)) {
+      targetedUserIds.add(target.targetId);
+    }
+  }
+
+  return targetedUserIds.size;
 }
 
 export interface AdminContentsRow {
@@ -76,16 +122,42 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
   }
 
   const contentIds = dbContents.map((content) => content.id);
-  const [readCounts, totalUserCount] = await Promise.all([
+  const [readCounts, allUsersForTargetCount] = await Promise.all([
     db.readLog.groupBy({
       by: ["contentId"],
       where: { contentId: { in: contentIds } },
       _count: { userId: true },
     }),
-    db.user.count(),
+    db.user.findMany({
+      select: {
+        id: true,
+        divisionId: true,
+        teamId: true,
+      },
+    }),
   ]);
 
   const readCountMap = new Map(readCounts.map((item) => [item.contentId, item._count.userId]));
+  const totalUserCount = allUsersForTargetCount.length;
+  const allUserIds = new Set<string>();
+  const divisionUserIdsMap = new Map<string, Set<string>>();
+  const teamUserIdsMap = new Map<string, Set<string>>();
+
+  allUsersForTargetCount.forEach((user: UserTargetSnapshot) => {
+    allUserIds.add(user.id);
+
+    if (user.divisionId) {
+      const currentDivisionUsers = divisionUserIdsMap.get(user.divisionId) ?? new Set<string>();
+      currentDivisionUsers.add(user.id);
+      divisionUserIdsMap.set(user.divisionId, currentDivisionUsers);
+    }
+
+    if (user.teamId) {
+      const currentTeamUsers = teamUserIdsMap.get(user.teamId) ?? new Set<string>();
+      currentTeamUsers.add(user.id);
+      teamUserIdsMap.set(user.teamId, currentTeamUsers);
+    }
+  });
 
   const divisionIds = new Set<string>();
   const userIds = new Set<string>();
@@ -116,33 +188,15 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
       : Promise.resolve([]),
   ]);
 
-  async function getTargetCountForContent(targets: TargetShape[]): Promise<number> {
-    if (targets.some((target) => target.targetType === "all")) {
-      return totalUserCount;
-    }
-
-    const orClauses: Array<{ divisionId?: string; teamId?: string; id?: string }> = [];
-    for (const target of targets) {
-      if (!target.targetId) continue;
-      if (target.targetType === "division") {
-        orClauses.push({ divisionId: target.targetId });
-      }
-      if (target.targetType === "team") {
-        orClauses.push({ teamId: target.targetId });
-      }
-      if (target.targetType === "user") {
-        orClauses.push({ id: target.targetId });
-      }
-    }
-
-    if (orClauses.length === 0) {
-      return 0;
-    }
-
-    return db.user.count({ where: { OR: orClauses } });
-  }
-
-  const targetCounts = await Promise.all(dbContents.map((content) => getTargetCountForContent(content.targets)));
+  const targetCounts = dbContents.map((content) =>
+    getTargetCountForContent(
+      content.targets,
+      totalUserCount,
+      allUserIds,
+      divisionUserIdsMap,
+      teamUserIdsMap
+    )
+  );
 
   return dbContents.map((content, index) => {
     const readCount = readCountMap.get(content.id) ?? 0;

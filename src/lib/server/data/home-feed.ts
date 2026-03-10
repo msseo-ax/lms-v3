@@ -49,8 +49,8 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
           category,
         } satisfies ContentWithMeta;
       })
+      .filter((content) => content.isTargeted)
       .sort((a, b) => {
-        if (a.isTargeted !== b.isTargeted) return a.isTargeted ? -1 : 1;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
@@ -70,8 +70,41 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
     return null;
   }
 
+  const dbUserTargetContext = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { id: true, divisionId: true, teamId: true },
+  });
+
+  const effectiveDivisionId = dbUserTargetContext?.divisionId ?? user.divisionId;
+  const effectiveTeamId = dbUserTargetContext?.teamId ?? null;
+
+  const targetConditions: Array<
+    | { targetType: "all" }
+    | { targetType: "user"; targetId: string }
+    | { targetType: "division"; targetId: string }
+    | { targetType: "team"; targetId: string }
+  > = [
+    { targetType: "all" },
+    { targetType: "user", targetId: user.id },
+  ];
+
+  if (effectiveDivisionId) {
+    targetConditions.push({ targetType: "division", targetId: effectiveDivisionId });
+  }
+
+  if (effectiveTeamId) {
+    targetConditions.push({ targetType: "team", targetId: effectiveTeamId });
+  }
+
   const [dbContents, dbCategories] = await Promise.all([
     prisma.content.findMany({
+      where: {
+        targets: {
+          some: {
+            OR: targetConditions,
+          },
+        },
+      },
       include: {
         targets: true,
         readLogs: {
@@ -87,17 +120,12 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
     prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
   ]);
 
-  const dbUserTargetContext = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { id: true, divisionId: true, teamId: true },
-  });
-
   const userForTargeting = {
     id: user.id,
     name: user.name,
-    divisionId: dbUserTargetContext?.divisionId ?? user.divisionId,
+    divisionId: effectiveDivisionId,
     teamId:
-      dbUserTargetContext?.teamId ??
+      effectiveTeamId ??
       ("teamId" in user && typeof user.teamId !== "undefined" ? user.teamId : null),
   };
 
@@ -161,7 +189,6 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
       } satisfies ContentWithMeta;
     })
     .sort((a, b) => {
-      if (a.isTargeted !== b.isTargeted) return a.isTargeted ? -1 : 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
