@@ -207,9 +207,9 @@ export default function CategoriesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">순서</TableHead>
+                  <TableHead className="w-12 whitespace-nowrap">순서</TableHead>
                   <TableHead>카테고리명</TableHead>
-                  <TableHead className="w-24 text-right">액션</TableHead>
+                  <TableHead className="w-24 text-center">액션</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -233,8 +233,8 @@ export default function CategoriesPage() {
                         <span className="font-medium">{cat.name}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
