@@ -88,8 +88,9 @@ export async function middleware(request: NextRequest) {
   );
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   if (user?.id) {
     requestHeaders.set("x-auth-user-id", user.id);
