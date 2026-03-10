@@ -75,6 +75,8 @@ model User {
   readLogs       ReadLog[]
   fileAccessLogs FileAccessLog[]
 
+  @@index([divisionId])
+  @@index([teamId])
   @@map("users")
 }
 
@@ -107,6 +109,8 @@ model Content {
   targets     ContentTarget[]
   readLogs    ReadLog[]
 
+  @@index([categoryId])
+  @@index([createdAt])
   @@map("contents")
 }
 
@@ -121,6 +125,7 @@ model ContentFile {
   content    Content         @relation(fields: [contentId], references: [id], onDelete: Cascade)
   accessLogs FileAccessLog[]
 
+  @@index([contentId])
   @@map("content_files")
 }
 
@@ -131,6 +136,8 @@ model ContentTarget {
   targetId   String?    @map("target_id") @db.Uuid
   content    Content    @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
+  @@index([contentId])
+  @@index([targetType, targetId])
   @@map("content_targets")
 }
 
@@ -146,6 +153,7 @@ model ReadLog {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, contentId])
+  @@index([contentId])
   @@map("read_logs")
 }
 
@@ -157,5 +165,7 @@ model FileAccessLog {
   contentFile   ContentFile @relation(fields: [contentFileId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([contentFileId])
+  @@index([userId])
   @@map("file_access_logs")
 }
