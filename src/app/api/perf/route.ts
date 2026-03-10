@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest } from "next/server";
 import { badRequest, notFound, ok, unauthorized } from "@/lib/api";
 import { isPerfScenarioName, PERF_SCENARIO_NAMES, runPerfScenario } from "@/lib/perf/scenarios";
