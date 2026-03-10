@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUserFromMiddlewareHeader } from "@/lib/auth";
 import { AppSidebar } from "@/components/shell/sidebar";
 
 export default async function AdminLayout({
@@ -7,10 +7,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let user;
-  try {
-    user = await requireAdmin();
-  } catch {
+  const user = await getCurrentUserFromMiddlewareHeader();
+  if (!user || user.role !== "admin") {
     redirect("/");
   }
 
