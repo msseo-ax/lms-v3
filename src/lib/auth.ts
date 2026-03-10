@@ -56,7 +56,7 @@ export async function getCurrentUserFromMiddlewareHeader(): Promise<User | null>
   const email = headerStore.get("x-auth-user-email");
 
   if (!userId || !email) {
-    return null;
+    return getCurrentUser();
   }
 
   const { prisma, warmPrismaConnection } = await import("@/lib/prisma");
@@ -69,7 +69,7 @@ export async function getCurrentUserFromMiddlewareHeader(): Promise<User | null>
   });
 
   if (!dbUser || dbUser.id !== userId) {
-    return null;
+    return getCurrentUser();
   }
 
   return {
