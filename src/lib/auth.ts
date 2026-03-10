@@ -39,6 +39,7 @@ async function getCurrentUserInternal(): Promise<User | null> {
     name: dbUser.name,
     role: dbUser.role,
     divisionId: dbUser.divisionId,
+    teamId: dbUser.teamId,
     avatarUrl: dbUser.avatarUrl,
     division: dbUser.division ? { id: dbUser.division.id, name: dbUser.division.name } : null,
   };
@@ -46,7 +47,7 @@ async function getCurrentUserInternal(): Promise<User | null> {
 
 export const getCurrentUser = cache(getCurrentUserInternal);
 
-export async function getCurrentUserFromMiddlewareHeader(): Promise<User | null> {
+async function getCurrentUserFromMiddlewareHeaderInternal(): Promise<User | null> {
   if (isMockMode) {
     return getMockCurrentUser();
   }
@@ -78,10 +79,13 @@ export async function getCurrentUserFromMiddlewareHeader(): Promise<User | null>
     name: dbUser.name,
     role: dbUser.role,
     divisionId: dbUser.divisionId,
+    teamId: dbUser.teamId,
     avatarUrl: dbUser.avatarUrl,
     division: dbUser.division ? { id: dbUser.division.id, name: dbUser.division.name } : null,
   };
 }
+
+export const getCurrentUserFromMiddlewareHeader = cache(getCurrentUserFromMiddlewareHeaderInternal);
 
 export async function requireUser(): Promise<User> {
   const user = await getCurrentUser();

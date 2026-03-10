@@ -14,6 +14,7 @@ export interface User {
   name: string;
   role: Role;
   divisionId: string | null;
+  teamId: string | null;
   avatarUrl: string | null;
   division?: Division | null;
 }

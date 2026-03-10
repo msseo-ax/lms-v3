@@ -93,6 +93,7 @@ export default async function ContentDetailPage({
         name: content.author.name,
         role: content.author.role,
         divisionId: content.author.divisionId,
+        teamId: content.author.teamId,
         avatarUrl: content.author.avatarUrl,
       }}
       files={content.files.map((file) => ({

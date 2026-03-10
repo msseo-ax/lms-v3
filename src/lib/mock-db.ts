@@ -10,12 +10,12 @@ export const divisions: Division[] = [
 ];
 
 export const users: User[] = [
-  { id: "user-admin", email: "admin@homes.global", name: "관리자", role: "admin", divisionId: "div-1", avatarUrl: null },
-  { id: "user-1", email: "kim@homes.global", name: "김서연", role: "user", divisionId: "div-2", avatarUrl: null },
-  { id: "user-2", email: "park@homes.global", name: "박준호", role: "user", divisionId: "div-3", avatarUrl: null },
-  { id: "user-3", email: "lee@homes.global", name: "이지은", role: "user", divisionId: "div-2", avatarUrl: null },
-  { id: "user-4", email: "choi@homes.global", name: "최민수", role: "user", divisionId: "div-3", avatarUrl: null },
-  { id: "user-5", email: "jung@homes.global", name: "정하나", role: "user", divisionId: "div-1", avatarUrl: null },
+  { id: "user-admin", email: "admin@homes.global", name: "관리자", role: "admin", divisionId: "div-1", teamId: null, avatarUrl: null },
+  { id: "user-1", email: "kim@homes.global", name: "김서연", role: "user", divisionId: "div-2", teamId: null, avatarUrl: null },
+  { id: "user-2", email: "park@homes.global", name: "박준호", role: "user", divisionId: "div-3", teamId: null, avatarUrl: null },
+  { id: "user-3", email: "lee@homes.global", name: "이지은", role: "user", divisionId: "div-2", teamId: null, avatarUrl: null },
+  { id: "user-4", email: "choi@homes.global", name: "최민수", role: "user", divisionId: "div-3", teamId: null, avatarUrl: null },
+  { id: "user-5", email: "jung@homes.global", name: "정하나", role: "user", divisionId: "div-1", teamId: null, avatarUrl: null },
 ];
 
 export const categories: Category[] = [
