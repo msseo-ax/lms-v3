@@ -28,10 +28,18 @@ export default function CategoriesPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
-  const [newSlug, setNewSlug] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  function slugify(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+  }
 
   const sortedCats = useMemo(
     () => [...cats].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -60,7 +68,14 @@ export default function CategoriesPage() {
   }
 
   async function handleAdd() {
-    if (!newName.trim() || !newSlug.trim()) return;
+    if (!newName.trim()) return;
+
+    const generatedSlug = slugify(newName);
+    if (!generatedSlug) {
+      alert("카테고리명에서 사용할 수 있는 슬러그를 생성할 수 없습니다.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -69,7 +84,7 @@ export default function CategoriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newName.trim(),
-          slug: newSlug.trim().toLowerCase().replace(/\s+/g, "-"),
+          slug: generatedSlug,
         }),
       });
 
@@ -81,7 +96,6 @@ export default function CategoriesPage() {
 
       setCats((prev) => [...prev, data as Category]);
       setNewName("");
-      setNewSlug("");
     } catch {
       alert("카테고리 추가 중 오류가 발생했습니다.");
     } finally {
@@ -169,15 +183,6 @@ export default function CategoriesPage() {
                   placeholder="예: 사내 비전/문화"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cat-slug">슬러그</Label>
-                <Input
-                  id="cat-slug"
-                  value={newSlug}
-                  onChange={(e) => setNewSlug(e.target.value)}
-                  placeholder="예: vision-culture"
-                />
-              </div>
               <DialogClose asChild>
                 <Button onClick={handleAdd} className="w-full" disabled={saving}>
                   추가
@@ -204,7 +209,6 @@ export default function CategoriesPage() {
                 <TableRow>
                   <TableHead className="w-12">순서</TableHead>
                   <TableHead>카테고리명</TableHead>
-                  <TableHead>슬러그</TableHead>
                   <TableHead className="w-24 text-right">액션</TableHead>
                 </TableRow>
               </TableHeader>
@@ -228,9 +232,6 @@ export default function CategoriesPage() {
                       ) : (
                         <span className="font-medium">{cat.name}</span>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{cat.slug}</code>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

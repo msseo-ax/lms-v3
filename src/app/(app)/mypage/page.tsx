@@ -1,165 +1,16 @@
 import Link from "next/link";
 import {
-  getMockCurrentUser,
-  contents,
-  readLogs,
-  isContentTargetedForUser,
-  isContentRead,
-  categories,
-  divisions,
-  teams,
-  getTargetLabels,
-  contentFiles,
-} from "@/lib/mock-db";
-import { getCurrentUser } from "@/lib/auth";
-import { getTargetLabels as getTargetLabelsFromData, isTargetedForUser } from "@/lib/targeting";
+  BookOpen,
+  Eye,
+  EyeOff,
+  FileText,
+} from "lucide-react";
+import { getMyPageData } from "@/lib/server/data/mypage";
 import { formatDate, cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Eye, EyeOff, FileText } from "lucide-react";
-
-interface MyPageData {
-  currentUser: {
-    id: string;
-    name: string;
-    email: string;
-    role: "admin" | "user";
-    avatarUrl: string | null;
-    divisionName?: string;
-    teamName?: string;
-  };
-  targetedContents: Array<{ id: string }>;
-  readContents: Array<{ id: string }>;
-  unreadContents: Array<{
-    id: string;
-    title: string;
-    categoryId: string;
-    summary: string | null;
-    createdAt: string;
-    targetLabels: string[];
-    fileCount: number;
-  }>;
-  categories: Array<{ id: string; name: string }>;
-  userReadLogsCount: number;
-}
-
-async function getMyPageData(): Promise<MyPageData | null> {
-  const isMockMode = process.env.USE_MOCK_DB === "true";
-
-  if (isMockMode) {
-    const currentUser = getMockCurrentUser();
-    const division = divisions.find((d) => d.id === currentUser.divisionId);
-    const team = teams.find((t) => t.id === currentUser.teamId);
-
-    const targetedContents = contents.filter((content) =>
-      isContentTargetedForUser(content.id, currentUser)
-    );
-    const readContents = targetedContents.filter((content) =>
-      isContentRead(content.id, currentUser.id)
-    );
-    const unreadContents = targetedContents
-      .filter((content) => !isContentRead(content.id, currentUser.id))
-      .map((content) => ({
-        id: content.id,
-        title: content.title,
-        categoryId: content.categoryId,
-        summary: content.summary,
-        createdAt: content.createdAt,
-        targetLabels: getTargetLabels(content.id),
-        fileCount: contentFiles.filter((file) => file.contentId === content.id).length,
-      }));
-
-    return {
-      currentUser: {
-        id: currentUser.id,
-        name: currentUser.name,
-        email: currentUser.email,
-        role: currentUser.role,
-        avatarUrl: currentUser.avatarUrl,
-        divisionName: division?.name,
-        teamName: team?.name,
-      },
-      targetedContents: targetedContents.map((content) => ({ id: content.id })),
-      readContents: readContents.map((content) => ({ id: content.id })),
-      unreadContents,
-      categories: categories.map((category) => ({ id: category.id, name: category.name })),
-      userReadLogsCount: readLogs.filter((log) => log.userId === currentUser.id).length,
-    };
-  }
-
-  const currentUser = await getCurrentUser();
-  if (!currentUser) return null;
-
-  const { prisma } = await import("@/lib/prisma");
-  if (!prisma) return null;
-
-  const [dbUser, dbContents, dbCategories, dbDivisions, dbTeams, dbUsers, dbReadLogs] =
-    await Promise.all([
-      prisma.user.findUnique({
-        where: { id: currentUser.id },
-        include: { division: true, team: true },
-      }),
-      prisma.content.findMany({
-        include: {
-          targets: true,
-          files: true,
-          readLogs: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.category.findMany({ select: { id: true, name: true } }),
-      prisma.division.findMany({ select: { id: true, name: true } }),
-      prisma.team.findMany({ select: { id: true, name: true } }),
-      prisma.user.findMany({ select: { id: true, name: true } }),
-      prisma.readLog.findMany({ where: { userId: currentUser.id }, select: { id: true } }),
-    ]);
-
-  if (!dbUser) return null;
-
-  const targetedContents = dbContents.filter((content) =>
-    isTargetedForUser(content.targets, {
-      id: dbUser.id,
-      name: dbUser.name,
-      divisionId: dbUser.divisionId,
-      teamId: dbUser.teamId,
-    })
-  );
-
-  const readContents = targetedContents.filter((content) =>
-    content.readLogs.some((log) => log.userId === currentUser.id)
-  );
-
-  const unreadContents = targetedContents
-    .filter((content) => !content.readLogs.some((log) => log.userId === currentUser.id))
-    .map((content) => ({
-      id: content.id,
-      title: content.title,
-      categoryId: content.categoryId,
-      summary: content.summary,
-      createdAt: content.createdAt.toISOString(),
-      targetLabels: getTargetLabelsFromData(content.targets, dbDivisions, dbTeams, dbUsers),
-      fileCount: content.files.length,
-    }));
-
-  return {
-    currentUser: {
-      id: dbUser.id,
-      name: dbUser.name,
-      email: dbUser.email,
-      role: dbUser.role,
-      avatarUrl: dbUser.avatarUrl,
-      divisionName: dbUser.division?.name,
-      teamName: dbUser.team?.name,
-    },
-    targetedContents: targetedContents.map((content) => ({ id: content.id })),
-    readContents: readContents.map((content) => ({ id: content.id })),
-    unreadContents,
-    categories: dbCategories,
-    userReadLogsCount: dbReadLogs.length,
-  };
-}
 
 export default async function MyPage() {
   const data = await getMyPageData();
@@ -209,9 +60,7 @@ export default async function MyPage() {
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-0.5">{currentUser.email}</p>
-              <p className="text-sm text-muted-foreground">
-                {currentUser.divisionName} · {currentUser.teamName}
-              </p>
+              <p className="text-sm text-muted-foreground">{currentUser.divisionName}</p>
               {userReadLogsCount > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">총 {userReadLogsCount}건 열람 완료</p>
               )}

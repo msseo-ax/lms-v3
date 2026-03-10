@@ -45,6 +45,19 @@ npx prisma migrate deploy
 npx prisma db seed
 ```
 
+Team concept removal data migration:
+
+```bash
+# preview affected rows
+npm run migrate:remove-team:dry-run
+
+# apply conversion (team target -> division target, user.team_id null, teams delete)
+npm run migrate:remove-team:apply
+
+# apply conversion but keep teams table rows
+npm run migrate:remove-team:apply:keep-teams
+```
+
 For local development where migration history is still evolving:
 
 ```bash

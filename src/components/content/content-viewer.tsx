@@ -50,6 +50,10 @@ export function ContentViewer({
   files,
   targetLabels,
 }: ContentViewerProps) {
+  function getAccessUrl(fileUrl: string): string {
+    return `/api/files/access?fileUrl=${encodeURIComponent(fileUrl)}`;
+  }
+
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
       <ReadTracker contentId={content.id} />
@@ -164,7 +168,7 @@ export function ContentViewer({
                           </Button>
                         ) : (
                           <Button variant="ghost" size="sm" asChild>
-                            <a href={file.fileUrl} download={file.fileName}>
+                            <a href={getAccessUrl(file.fileUrl)} download={file.fileName}>
                               <Download className="h-4 w-4" />
                               다운로드
                             </a>
@@ -177,7 +181,7 @@ export function ContentViewer({
                   {file.fileType === "pdf" && (
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       <iframe
-                        src={file.fileUrl}
+                        src={getAccessUrl(file.fileUrl)}
                         title={file.fileName}
                         className="w-full h-[600px]"
                       />
@@ -188,7 +192,7 @@ export function ContentViewer({
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={file.fileUrl}
+                        src={getAccessUrl(file.fileUrl)}
                         alt={file.fileName}
                         className="w-full h-auto"
                       />
@@ -198,7 +202,7 @@ export function ContentViewer({
                   {file.fileType === "mp4" && (
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       <video
-                        src={file.fileUrl}
+                        src={getAccessUrl(file.fileUrl)}
                         controls
                         className="w-full"
                       >

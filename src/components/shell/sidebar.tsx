@@ -13,7 +13,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeft,
-  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -157,14 +156,6 @@ function SidebarContent({
         {user.role === "admin" && (
           <>
             <Separator className="my-4" />
-            {!collapsed && (
-              <div className="flex items-center gap-2 px-3 pb-2">
-                <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  관리자
-                </span>
-              </div>
-            )}
             {adminNavItems.map((item) => (
               <NavLink
                 key={item.href}

@@ -7,16 +7,26 @@ interface ReadTrackerProps {
 }
 
 export function ReadTracker({ contentId }: ReadTrackerProps) {
-  const startTimeRef = useRef<number>(Date.now());
+  const checkpointRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    startTimeRef.current = Date.now();
+    checkpointRef.current = Date.now();
 
-    function sendDuration() {
-      const durationSeconds = Math.round(
-        (Date.now() - startTimeRef.current) / 1000
-      );
-      if (durationSeconds < 1) return;
+    function sendDuration(allowWhenHidden = false) {
+      const now = Date.now();
+
+      if (!allowWhenHidden && document.visibilityState !== "visible") {
+        checkpointRef.current = now;
+        return;
+      }
+
+      const durationSeconds = Math.round((now - checkpointRef.current) / 1000);
+      if (durationSeconds < 1) {
+        checkpointRef.current = now;
+        return;
+      }
+
+      checkpointRef.current = now;
 
       const body = JSON.stringify({ contentId, durationSeconds });
 
@@ -37,17 +47,27 @@ export function ReadTracker({ contentId }: ReadTrackerProps) {
 
     function handleVisibilityChange() {
       if (document.visibilityState === "hidden") {
-        sendDuration();
+        sendDuration(true);
       } else {
-        startTimeRef.current = Date.now();
+        checkpointRef.current = Date.now();
       }
     }
+
+    const initialTimer = window.setTimeout(() => {
+      sendDuration(false);
+    }, 2000);
+
+    const periodicTimer = window.setInterval(() => {
+      sendDuration(false);
+    }, 30000);
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(periodicTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      sendDuration();
+      sendDuration(false);
     };
   }, [contentId]);
 

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import type { Category, Division, Team, User, TargetType, SummaryType } from "@/types/domain";
+import type { Category, Division, User, TargetType, SummaryType } from "@/types/domain";
 import { cn, formatFileSize } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +46,6 @@ const RichEditor = dynamic(
 interface ContentFormProps {
   categories: Category[];
   divisions: Division[];
-  teams: Team[];
   users: User[];
   mode?: "create" | "edit";
   contentId?: string;
@@ -63,6 +62,13 @@ interface ContentFormProps {
 interface UploadedFile {
   file: File;
   id: string;
+}
+
+interface ContentFilePayload {
+  fileUrl: string;
+  fileType: "pdf" | "docx" | "mp4" | "image" | "link";
+  fileName: string;
+  fileSize: number;
 }
 
 const ACCEPTED_TYPES = [
@@ -92,31 +98,52 @@ function getFileTypeLabel(file: File): string {
   return "파일";
 }
 
+function resolveFileType(contentType: string): "pdf" | "docx" | "mp4" | "image" {
+  if (contentType === "application/pdf") return "pdf";
+  if (contentType.includes("word")) return "docx";
+  if (contentType.startsWith("video/")) return "mp4";
+  return "image";
+}
+
+function isAllowedHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function deriveInitialTarget(
   targets: { targetType: TargetType; targetId: string | null }[] | undefined
-): { type: TargetType; ids: string[] } {
+): { type: TargetType; divisionIds: string[]; userIds: string[] } {
   if (!targets || targets.length === 0) {
-    return { type: "all", ids: [] };
+    return { type: "all", divisionIds: [], userIds: [] };
   }
+
+  const divisionIds = targets
+    .filter((target) => target.targetType === "division")
+    .map((target) => target.targetId)
+    .filter((id): id is string => Boolean(id));
+  const userIds = targets
+    .filter((target) => target.targetType === "user")
+    .map((target) => target.targetId)
+    .filter((id): id is string => Boolean(id));
 
   if (targets.some((t) => t.targetType === "all")) {
-    return { type: "all", ids: [] };
+    return { type: "all", divisionIds, userIds };
   }
 
-  const firstType = targets[0].targetType;
   return {
-    type: firstType,
-    ids: targets
-      .filter((t) => t.targetType === firstType)
-      .map((t) => t.targetId)
-      .filter((id): id is string => Boolean(id)),
+    type: userIds.length > 0 ? "user" : "division",
+    divisionIds,
+    userIds,
   };
 }
 
 export function ContentForm({
   categories,
   divisions,
-  teams,
   users,
   mode = "create",
   contentId,
@@ -125,7 +152,7 @@ export function ContentForm({
   const router = useRouter();
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [categoryId, setCategoryId] = useState(initialValues?.categoryId ?? "");
-  const [target, setTarget] = useState<{ type: TargetType; ids: string[] }>(() =>
+  const [target, setTarget] = useState<{ type: TargetType; divisionIds: string[]; userIds: string[] }>(() =>
     deriveInitialTarget(initialValues?.targets)
   );
   const [body, setBody] = useState(initialValues?.body ?? "");
@@ -162,7 +189,11 @@ export function ContentForm({
     const trimmed = linkInput.trim();
     if (!trimmed) return;
     try {
-      new URL(trimmed);
+      if (!isAllowedHttpUrl(trimmed)) {
+        alert("http/https 링크만 추가할 수 있습니다.");
+        return;
+      }
+
       setLinks((prev) => [...prev, trimmed]);
       setLinkInput("");
     } catch {
@@ -215,9 +246,12 @@ export function ContentForm({
     const targets =
       target.type === "all"
         ? [{ targetType: "all", targetId: null }]
-        : target.ids.map((id) => ({ targetType: target.type, targetId: id }));
+        : [
+            ...target.divisionIds.map((id) => ({ targetType: "division" as const, targetId: id })),
+            ...target.userIds.map((id) => ({ targetType: "user" as const, targetId: id })),
+          ];
 
-    if (target.type !== "all" && targets.length === 0) {
+    if (target.type !== "all" && target.divisionIds.length === 0 && target.userIds.length === 0) {
       alert("배포 대상을 1개 이상 선택해주세요.");
       return;
     }
@@ -225,6 +259,79 @@ export function ContentForm({
     setIsSubmitting(true);
 
     try {
+      const uploadedFiles = await Promise.all(
+        files.map(async (item): Promise<ContentFilePayload> => {
+          const presignResponse = await fetch("/api/uploads/presign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: item.file.name,
+              contentType: item.file.type,
+              fileSize: item.file.size,
+            }),
+          });
+
+          const presignData = (await presignResponse.json()) as {
+            uploadUrl: string | null;
+            fileUrl: string;
+            key: string;
+            mock: boolean;
+            error?: string;
+          };
+
+          if (!presignResponse.ok) {
+            throw new Error(
+              presignData.error ?? `파일 업로드 URL 생성 실패: ${item.file.name}`
+            );
+          }
+
+          if (presignData.uploadUrl) {
+            try {
+              const uploadResponse = await fetch(presignData.uploadUrl, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": item.file.type,
+                },
+                body: item.file,
+              });
+
+              if (!uploadResponse.ok) {
+                throw new Error(`파일 업로드 실패: ${item.file.name}`);
+              }
+            } catch {
+              throw new Error(
+                `파일 업로드 실패: ${item.file.name} (S3 CORS 또는 권한 설정을 확인해주세요.)`
+              );
+            }
+          }
+
+          return {
+            fileUrl: presignData.fileUrl,
+            fileType: resolveFileType(item.file.type),
+            fileName: item.file.name,
+            fileSize: item.file.size,
+          };
+        })
+      );
+
+      const linkFiles: ContentFilePayload[] = [];
+      for (const link of links) {
+        if (!isAllowedHttpUrl(link)) {
+          alert("허용되지 않는 링크 형식이 포함되어 있습니다.");
+          return;
+        }
+
+        linkFiles.push({
+          fileUrl: link,
+          fileType: "link",
+          fileName: link,
+          fileSize: 0,
+        });
+      }
+
+      const shouldSendFiles =
+        mode === "create" || uploadedFiles.length > 0 || linkFiles.length > 0;
+
       const endpoint = mode === "edit" ? `/api/contents/${contentId}` : "/api/contents";
       const method = mode === "edit" ? "PATCH" : "POST";
 
@@ -238,6 +345,11 @@ export function ContentForm({
           summary,
           summaryType: summaryMode,
           targets,
+          ...(shouldSendFiles
+            ? {
+                files: [...uploadedFiles, ...linkFiles],
+              }
+            : {}),
         }),
       });
 
@@ -250,8 +362,9 @@ export function ContentForm({
       alert(mode === "edit" ? "콘텐츠가 수정되었습니다." : "콘텐츠가 등록되었습니다.");
       router.push("/admin/contents");
       router.refresh();
-    } catch {
-      alert("저장 중 오류가 발생했습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "저장 중 오류가 발생했습니다.";
+      alert(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -316,7 +429,6 @@ export function ContentForm({
             <Label>배포 대상</Label>
             <TargetPicker
               divisions={divisions}
-              teams={teams}
               users={users}
               value={target}
               onChange={setTarget}

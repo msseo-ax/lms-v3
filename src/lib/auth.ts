@@ -1,9 +1,10 @@
 import type { User } from "@/types/domain";
 import { getMockCurrentUser } from "@/lib/mock-db";
+import { cache } from "react";
 
 const isMockMode = process.env.USE_MOCK_DB === "true";
 
-export async function getCurrentUser(): Promise<User | null> {
+async function getCurrentUserInternal(): Promise<User | null> {
   if (isMockMode) {
     return getMockCurrentUser();
   }
@@ -19,7 +20,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: authUser.email },
-    include: { division: true, team: true },
+    include: { division: true },
   });
 
   if (!dbUser) return null;
@@ -30,12 +31,12 @@ export async function getCurrentUser(): Promise<User | null> {
     name: dbUser.name,
     role: dbUser.role,
     divisionId: dbUser.divisionId,
-    teamId: dbUser.teamId,
     avatarUrl: dbUser.avatarUrl,
     division: dbUser.division ? { id: dbUser.division.id, name: dbUser.division.name } : null,
-    team: dbUser.team ? { id: dbUser.team.id, name: dbUser.team.name, divisionId: dbUser.team.divisionId } : null,
   };
 }
+
+export const getCurrentUser = cache(getCurrentUserInternal);
 
 export async function requireUser(): Promise<User> {
   const user = await getCurrentUser();

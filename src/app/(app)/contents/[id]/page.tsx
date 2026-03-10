@@ -57,16 +57,14 @@ export default async function ContentDetailPage({
     redirect("/");
   }
 
-  const [dbDivisions, dbTeams, dbUsers] = await Promise.all([
+  const [dbDivisions, dbUsers] = await Promise.all([
     prisma.division.findMany({ select: { id: true, name: true } }),
-    prisma.team.findMany({ select: { id: true, name: true } }),
     prisma.user.findMany({ select: { id: true, name: true } }),
   ]);
 
   const targetLabels = getTargetLabelsFromData(
     content.targets,
     dbDivisions,
-    dbTeams,
     dbUsers
   );
 
@@ -95,7 +93,6 @@ export default async function ContentDetailPage({
         name: content.author.name,
         role: content.author.role,
         divisionId: content.author.divisionId,
-        teamId: content.author.teamId,
         avatarUrl: content.author.avatarUrl,
       }}
       files={content.files.map((file) => ({

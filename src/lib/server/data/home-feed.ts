@@ -1,0 +1,179 @@
+import { getCurrentUser } from "@/lib/auth";
+import {
+  categories,
+  contentFiles,
+  contents,
+  getMockCurrentUser,
+  getTargetLabels,
+  isContentRead,
+  isContentTargetedForUser,
+} from "@/lib/mock-db";
+import { getTargetLabels as getTargetLabelsFromData, isTargetedForUser } from "@/lib/targeting";
+import type { Category, ContentWithMeta } from "@/types/domain";
+import { cache } from "react";
+
+export interface HomeFeedData {
+  contents: ContentWithMeta[];
+  categories: Category[];
+}
+
+interface HomeFeedOptions {
+  userOverride?: {
+    id: string;
+    name: string;
+    divisionId: string | null;
+    teamId?: string | null;
+  };
+}
+
+async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeFeedData | null> {
+  const isMockMode = process.env.USE_MOCK_DB === "true";
+
+  if (isMockMode) {
+    const currentUser = getMockCurrentUser();
+
+    const feedData: ContentWithMeta[] = contents
+      .map((content) => {
+        const category = categories.find((item) => item.id === content.categoryId);
+        const fileCount = contentFiles.filter((file) => file.contentId === content.id).length;
+        const targetLabels = getTargetLabels(content.id);
+        const isTargeted = isContentTargetedForUser(content.id, currentUser);
+        const isRead = isContentRead(content.id, currentUser.id);
+
+        return {
+          ...content,
+          isRead,
+          isTargeted,
+          fileCount,
+          targetLabels,
+          category,
+        } satisfies ContentWithMeta;
+      })
+      .sort((a, b) => {
+        if (a.isTargeted !== b.isTargeted) return a.isTargeted ? -1 : 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+
+    return {
+      contents: feedData,
+      categories,
+    };
+  }
+
+  const user = options?.userOverride ?? (await getCurrentUser());
+  if (!user) {
+    return null;
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  if (!prisma) {
+    return null;
+  }
+
+  const [dbContents, dbCategories] = await Promise.all([
+    prisma.content.findMany({
+      include: {
+        targets: true,
+        readLogs: {
+          where: { userId: user.id },
+          select: { userId: true },
+        },
+        _count: {
+          select: { files: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
+  ]);
+
+  const dbUserTargetContext = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { id: true, divisionId: true, teamId: true },
+  });
+
+  const userForTargeting = {
+    id: user.id,
+    name: user.name,
+    divisionId: dbUserTargetContext?.divisionId ?? user.divisionId,
+    teamId:
+      dbUserTargetContext?.teamId ??
+      ("teamId" in user && typeof user.teamId !== "undefined" ? user.teamId : null),
+  };
+
+  const divisionIds = new Set<string>();
+  const userIds = new Set<string>();
+
+  dbContents.forEach((content) => {
+    content.targets.forEach((target) => {
+      if (target.targetType === "division" && target.targetId) {
+        divisionIds.add(target.targetId);
+      }
+      if (target.targetType === "user" && target.targetId) {
+        userIds.add(target.targetId);
+      }
+    });
+  });
+
+  const [dbDivisions, dbUsers] = await Promise.all([
+    divisionIds.size
+      ? prisma.division.findMany({
+          where: { id: { in: Array.from(divisionIds) } },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    userIds.size
+      ? prisma.user.findMany({
+          where: { id: { in: Array.from(userIds) } },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const feedData: ContentWithMeta[] = dbContents
+    .map((content) => {
+      const category = dbCategories.find((item) => item.id === content.categoryId);
+      const isRead = content.readLogs.length > 0;
+      const isTargeted = isTargetedForUser(content.targets, userForTargeting);
+
+      return {
+        id: content.id,
+        title: content.title,
+        body: content.body,
+        summary: content.summary,
+        summaryType: content.summaryType,
+        categoryId: content.categoryId,
+        createdBy: content.createdBy,
+        createdAt: content.createdAt.toISOString(),
+        updatedAt: content.updatedAt.toISOString(),
+        category: category
+          ? {
+              id: category.id,
+              name: category.name,
+              slug: category.slug,
+              sortOrder: category.sortOrder,
+            }
+          : undefined,
+        isRead,
+        isTargeted,
+        fileCount: content._count.files,
+        targetLabels: getTargetLabelsFromData(content.targets, dbDivisions, dbUsers),
+      } satisfies ContentWithMeta;
+    })
+    .sort((a, b) => {
+      if (a.isTargeted !== b.isTargeted) return a.isTargeted ? -1 : 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  return {
+    contents: feedData,
+    categories: dbCategories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      sortOrder: category.sortOrder,
+    })),
+  };
+}
+
+export const getHomeFeedData = cache(getHomeFeedDataInternal);

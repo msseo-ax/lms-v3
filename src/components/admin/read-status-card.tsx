@@ -1,11 +1,16 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff } from "lucide-react";
 import type { User } from "@/types/domain";
 
 interface ReadStatusCardProps {
+  contentId: string;
   title: string;
   categoryName: string;
   readRate: number;
@@ -16,6 +21,7 @@ interface ReadStatusCardProps {
 }
 
 export function ReadStatusCard({
+  contentId,
   title,
   categoryName,
   readRate,
@@ -24,6 +30,35 @@ export function ReadStatusCard({
   targetLabels,
   unreadUsers,
 }: ReadStatusCardProps) {
+  const [isSending, setIsSending] = useState(false);
+
+  async function handleSendReminder() {
+    if (unreadUsers.length === 0 || isSending) {
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const response = await fetch("/api/slack/remind", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentId }),
+      });
+
+      const data = (await response.json()) as { message?: string; error?: string };
+      if (!response.ok) {
+        alert(data.error ?? "슬랙 리마인드 전송에 실패했습니다.");
+        return;
+      }
+
+      alert(data.message ?? "슬랙 리마인드가 전송되었습니다.");
+    } catch {
+      alert("슬랙 리마인드 전송 중 오류가 발생했습니다.");
+    } finally {
+      setIsSending(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -70,9 +105,25 @@ export function ReadStatusCard({
         </div>
         {unreadUsers.length > 0 && (
           <details className="group">
-            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 select-none">
-              <EyeOff className="h-3 w-3" />
-              미열람 {unreadUsers.length}명 보기
+            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-between gap-2 select-none">
+              <span className="inline-flex items-center gap-1">
+                <EyeOff className="h-3 w-3" />
+                미열람 {unreadUsers.length}명 보기
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[11px]"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void handleSendReminder();
+                }}
+                disabled={isSending}
+              >
+                {isSending ? "전송 중..." : "슬랙 리마인드"}
+              </Button>
             </summary>
             <div className="mt-2 space-y-1 pl-4 border-l-2 border-muted">
               {unreadUsers.map((u) => (

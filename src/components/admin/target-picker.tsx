@@ -1,61 +1,81 @@
 "use client";
 
 import { useState } from "react";
-import type { Division, Team, User, TargetType } from "@/types/domain";
+import type { Division, User, TargetType } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 interface TargetPickerProps {
   divisions: Division[];
-  teams: Team[];
   users: User[];
-  value: { type: TargetType; ids: string[] };
-  onChange: (value: { type: TargetType; ids: string[] }) => void;
+  value: { type: TargetType; divisionIds: string[]; userIds: string[] };
+  onChange: (value: { type: TargetType; divisionIds: string[]; userIds: string[] }) => void;
 }
 
 const TARGET_MODES: { value: TargetType; label: string }[] = [
   { value: "all", label: "전체" },
-  { value: "division", label: "본부 선택" },
-  { value: "team", label: "팀 선택" },
-  { value: "user", label: "개인 선택" },
+  { value: "division", label: "본부/부문" },
+  { value: "user", label: "개인" },
 ];
 
 export function TargetPicker({
   divisions,
-  teams,
   users,
   value,
   onChange,
 }: TargetPickerProps) {
   const [mode, setMode] = useState<TargetType>(value.type);
+  const [userSearch, setUserSearch] = useState("");
 
   function handleModeChange(newMode: TargetType) {
     setMode(newMode);
-    onChange({ type: newMode, ids: newMode === "all" ? [] : [] });
+    onChange({ ...value, type: newMode });
+    setUserSearch("");
   }
 
-  function toggleId(id: string) {
-    const ids = value.ids.includes(id)
-      ? value.ids.filter((i) => i !== id)
-      : [...value.ids, id];
-    onChange({ type: mode, ids });
+  function toggleDivisionId(id: string) {
+    const divisionIds = value.divisionIds.includes(id)
+      ? value.divisionIds.filter((item) => item !== id)
+      : [...value.divisionIds, id];
+    onChange({ ...value, divisionIds });
   }
 
-  function removeId(id: string) {
-    onChange({ type: mode, ids: value.ids.filter((i) => i !== id) });
+  function toggleUserId(id: string) {
+    const userIds = value.userIds.includes(id)
+      ? value.userIds.filter((item) => item !== id)
+      : [...value.userIds, id];
+    onChange({ ...value, userIds });
   }
 
-  function getLabel(id: string): string {
-    if (mode === "division") return divisions.find((d) => d.id === id)?.name ?? id;
-    if (mode === "team") return teams.find((t) => t.id === id)?.name ?? id;
-    if (mode === "user") return users.find((u) => u.id === id)?.name ?? id;
-    return id;
+  function removeDivisionId(id: string) {
+    onChange({ ...value, divisionIds: value.divisionIds.filter((item) => item !== id) });
+  }
+
+  function removeUserId(id: string) {
+    onChange({ ...value, userIds: value.userIds.filter((item) => item !== id) });
   }
 
   const nonAdminUsers = users.filter((u) => u.role !== "admin");
+
+  const filteredUsers = userSearch.trim()
+    ? nonAdminUsers.filter(
+        (u) =>
+          u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+          u.email.toLowerCase().includes(userSearch.toLowerCase())
+      )
+    : nonAdminUsers;
+
+  const assignedUsers = filteredUsers.filter((u) => u.divisionId);
+  const unassignedUsers = filteredUsers.filter((u) => !u.divisionId);
+  const selectedDivisionSet = new Set(value.divisionIds);
+
+  function isIncludedByDivision(user: User) {
+    return Boolean(user.divisionId && selectedDivisionSet.has(user.divisionId));
+  }
 
   return (
     <div className="space-y-3">
@@ -81,8 +101,8 @@ export function TargetPicker({
               className="flex cursor-pointer items-center gap-2"
             >
               <Checkbox
-                checked={value.ids.includes(div.id)}
-                onCheckedChange={() => toggleId(div.id)}
+                checked={value.divisionIds.includes(div.id)}
+                onCheckedChange={() => toggleDivisionId(div.id)}
               />
               <span className="text-sm">{div.name}</span>
             </label>
@@ -90,40 +110,26 @@ export function TargetPicker({
         </div>
       )}
 
-      {mode === "team" && (
-        <div className="space-y-3 rounded-md border border-input p-3">
-          {divisions.map((div) => {
-            const divTeams = teams.filter((t) => t.divisionId === div.id);
-            if (divTeams.length === 0) return null;
-            return (
-              <div key={div.id}>
-                <Label className="mb-1.5 block text-xs text-muted-foreground">
-                  {div.name}
-                </Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {divTeams.map((team) => (
-                    <label
-                      key={team.id}
-                      className="flex cursor-pointer items-center gap-2"
-                    >
-                      <Checkbox
-                        checked={value.ids.includes(team.id)}
-                        onCheckedChange={() => toggleId(team.id)}
-                      />
-                      <span className="text-sm">{team.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {mode === "user" && (
-        <div className="space-y-3 rounded-md border border-input p-3">
+        <div className="space-y-4 rounded-md border border-input p-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="이름 또는 이메일 검색"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+
+          {filteredUsers.length === 0 && (
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              검색 결과가 없습니다.
+            </p>
+          )}
+
           {divisions.map((div) => {
-            const divUsers = nonAdminUsers.filter((u) => u.divisionId === div.id);
+            const divUsers = assignedUsers.filter((u) => u.divisionId === div.id);
             if (divUsers.length === 0) return null;
             return (
               <div key={div.id}>
@@ -131,22 +137,56 @@ export function TargetPicker({
                   {div.name}
                 </Label>
                 <div className="grid grid-cols-4 gap-2">
-                  {divUsers.map((user) => (
+                  {divUsers.map((user) => {
+                    const includedByDivision = isIncludedByDivision(user);
+                    const explicitlySelected = value.userIds.includes(user.id);
+                    const checked = includedByDivision || explicitlySelected;
+                    return (
                     <label
                       key={user.id}
                       className="flex cursor-pointer items-center gap-2"
                     >
                       <Checkbox
-                        checked={value.ids.includes(user.id)}
-                        onCheckedChange={() => toggleId(user.id)}
+                        checked={checked}
+                        disabled={includedByDivision && !explicitlySelected}
+                        onCheckedChange={() => toggleUserId(user.id)}
                       />
                       <span className="text-sm">{user.name}</span>
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
+
+          {unassignedUsers.length > 0 && (
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground">
+                {assignedUsers.length > 0 ? "미분류" : "전체 구성원"}
+              </Label>
+              <div className="grid grid-cols-4 gap-2">
+                {unassignedUsers.map((user) => {
+                  const includedByDivision = isIncludedByDivision(user);
+                  const explicitlySelected = value.userIds.includes(user.id);
+                  const checked = includedByDivision || explicitlySelected;
+                  return (
+                  <label
+                    key={user.id}
+                    className="flex cursor-pointer items-center gap-2"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      disabled={includedByDivision && !explicitlySelected}
+                      onCheckedChange={() => toggleUserId(user.id)}
+                    />
+                    <span className="text-sm">{user.name}</span>
+                  </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -156,14 +196,26 @@ export function TargetPicker({
         </p>
       )}
 
-      {value.ids.length > 0 && (
+      {(value.divisionIds.length > 0 || value.userIds.length > 0) && (
         <div className="flex flex-wrap gap-1.5">
-          {value.ids.map((id) => (
+          {value.divisionIds.map((id) => (
             <Badge key={id} variant="secondary" className="gap-1 pr-1">
-              {getLabel(id)}
+              {divisions.find((d) => d.id === id)?.name ?? id}
               <button
                 type="button"
-                onClick={() => removeId(id)}
+                onClick={() => removeDivisionId(id)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          {value.userIds.map((id) => (
+            <Badge key={id} variant="secondary" className="gap-1 pr-1">
+              {users.find((u) => u.id === id)?.name ?? id}
+              <button
+                type="button"
+                onClick={() => removeUserId(id)}
                 className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
               >
                 <X className="h-3 w-3" />

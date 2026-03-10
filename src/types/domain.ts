@@ -1,17 +1,11 @@
 export type Role = "admin" | "user";
 export type SummaryType = "manual" | "ai";
 export type FileType = "pdf" | "docx" | "mp4" | "image" | "link";
-export type TargetType = "all" | "division" | "team" | "user";
+export type TargetType = "all" | "division" | "user";
 
 export interface Division {
   id: string;
   name: string;
-}
-
-export interface Team {
-  id: string;
-  name: string;
-  divisionId: string;
 }
 
 export interface User {
@@ -20,10 +14,8 @@ export interface User {
   name: string;
   role: Role;
   divisionId: string | null;
-  teamId: string | null;
   avatarUrl: string | null;
   division?: Division | null;
-  team?: Team | null;
 }
 
 export interface Category {

@@ -26,13 +26,16 @@ export function ContentRow({
       <TableCell>
         <Link
           href={`/admin/contents/${id}/edit`}
-          className="font-medium hover:underline underline-offset-4"
+          className="block max-w-[34ch] truncate font-medium hover:underline underline-offset-4"
+          title={title}
         >
           {title}
         </Link>
       </TableCell>
       <TableCell>
-        <Badge variant="secondary">{categoryName}</Badge>
+        <Badge variant="secondary" className="whitespace-nowrap">
+          {categoryName}
+        </Badge>
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">

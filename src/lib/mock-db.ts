@@ -1,5 +1,5 @@
 import type {
-  User, Division, Team, Category, Content,
+  User, Division, Category, Content,
   ContentFile, ContentTarget, ReadLog, FileAccessLog,
 } from "@/types/domain";
 
@@ -9,22 +9,13 @@ export const divisions: Division[] = [
   { id: "div-3", name: "기술본부" },
 ];
 
-export const teams: Team[] = [
-  { id: "team-1", name: "경영지원팀", divisionId: "div-1" },
-  { id: "team-2", name: "인사팀", divisionId: "div-1" },
-  { id: "team-3", name: "AMS팀", divisionId: "div-2" },
-  { id: "team-4", name: "PM팀", divisionId: "div-2" },
-  { id: "team-5", name: "개발팀", divisionId: "div-3" },
-  { id: "team-6", name: "디자인팀", divisionId: "div-3" },
-];
-
 export const users: User[] = [
-  { id: "user-admin", email: "admin@homes.global", name: "관리자", role: "admin", divisionId: "div-1", teamId: "team-1", avatarUrl: null },
-  { id: "user-1", email: "kim@homes.global", name: "김서연", role: "user", divisionId: "div-2", teamId: "team-3", avatarUrl: null },
-  { id: "user-2", email: "park@homes.global", name: "박준호", role: "user", divisionId: "div-3", teamId: "team-5", avatarUrl: null },
-  { id: "user-3", email: "lee@homes.global", name: "이지은", role: "user", divisionId: "div-2", teamId: "team-4", avatarUrl: null },
-  { id: "user-4", email: "choi@homes.global", name: "최민수", role: "user", divisionId: "div-3", teamId: "team-6", avatarUrl: null },
-  { id: "user-5", email: "jung@homes.global", name: "정하나", role: "user", divisionId: "div-1", teamId: "team-2", avatarUrl: null },
+  { id: "user-admin", email: "admin@homes.global", name: "관리자", role: "admin", divisionId: "div-1", avatarUrl: null },
+  { id: "user-1", email: "kim@homes.global", name: "김서연", role: "user", divisionId: "div-2", avatarUrl: null },
+  { id: "user-2", email: "park@homes.global", name: "박준호", role: "user", divisionId: "div-3", avatarUrl: null },
+  { id: "user-3", email: "lee@homes.global", name: "이지은", role: "user", divisionId: "div-2", avatarUrl: null },
+  { id: "user-4", email: "choi@homes.global", name: "최민수", role: "user", divisionId: "div-3", avatarUrl: null },
+  { id: "user-5", email: "jung@homes.global", name: "정하나", role: "user", divisionId: "div-1", avatarUrl: null },
 ];
 
 export const categories: Category[] = [
@@ -118,8 +109,7 @@ export const contentFiles: ContentFile[] = [
 
 export const contentTargets: ContentTarget[] = [
   { id: "target-1", contentId: "content-1", targetType: "all", targetId: null },
-  { id: "target-2", contentId: "content-2", targetType: "team", targetId: "team-3" },
-  { id: "target-3", contentId: "content-2", targetType: "team", targetId: "team-4" },
+  { id: "target-2", contentId: "content-2", targetType: "division", targetId: "div-2" },
   { id: "target-4", contentId: "content-3", targetType: "division", targetId: "div-2" },
   { id: "target-5", contentId: "content-4", targetType: "all", targetId: null },
   { id: "target-6", contentId: "content-5", targetType: "all", targetId: null },
@@ -148,7 +138,6 @@ export function isContentTargetedForUser(contentId: string, user: User): boolean
   if (targets.length === 0) return false;
   if (targets.some((t) => t.targetType === "all")) return true;
   if (user.divisionId && targets.some((t) => t.targetType === "division" && t.targetId === user.divisionId)) return true;
-  if (user.teamId && targets.some((t) => t.targetType === "team" && t.targetId === user.teamId)) return true;
   if (targets.some((t) => t.targetType === "user" && t.targetId === user.id)) return true;
   return false;
 }
@@ -158,7 +147,6 @@ export function getTargetLabels(contentId: string): string[] {
   return targets.map((t) => {
     if (t.targetType === "all") return "전체";
     if (t.targetType === "division") return divisions.find((d) => d.id === t.targetId)?.name ?? "본부";
-    if (t.targetType === "team") return teams.find((tm) => tm.id === t.targetId)?.name ?? "팀";
     if (t.targetType === "user") return users.find((u) => u.id === t.targetId)?.name ?? "개인";
     return "";
   });
@@ -179,8 +167,6 @@ export function getContentReadRate(contentId: string): number {
     for (const t of targets) {
       if (t.targetType === "division") {
         users.filter((u) => u.divisionId === t.targetId).forEach((u) => set.add(u.id));
-      } else if (t.targetType === "team") {
-        users.filter((u) => u.teamId === t.targetId).forEach((u) => set.add(u.id));
       } else if (t.targetType === "user" && t.targetId) {
         set.add(t.targetId);
       }

@@ -16,6 +16,15 @@ function isUuid(value: string) {
   return UUID_RE.test(value);
 }
 
+function isAllowedHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 interface RouteContext {
   params: { id: string };
 }
@@ -58,10 +67,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { id } = context.params;
   const body = await request.json();
-  const { title, categoryId, body: contentBody, summary, summaryType, targets } = body;
+  const { title, categoryId, body: contentBody, summary, summaryType, targets, files } = body;
 
   if (!title || !categoryId) {
     return badRequest("title and categoryId are required");
+  }
+
+  if (files && !Array.isArray(files)) {
+    return badRequest("files must be an array");
+  }
+
+  if (Array.isArray(files)) {
+    for (const file of files) {
+      if (!file || typeof file !== "object") {
+        return badRequest("Invalid files payload");
+      }
+
+      if (!file.fileUrl || !file.fileType || !file.fileName) {
+        return badRequest("Invalid file item");
+      }
+
+      if (!["pdf", "docx", "mp4", "image", "link"].includes(file.fileType as string)) {
+        return badRequest("Invalid file type");
+      }
+
+      if (!isAllowedHttpUrl(file.fileUrl)) {
+        return badRequest("Invalid file URL");
+      }
+
+      if (file.fileType === "link" && !isAllowedHttpUrl(file.fileUrl)) {
+        return badRequest("Invalid link URL");
+      }
+    }
   }
 
   const isMockMode = process.env.USE_MOCK_DB === "true";
@@ -100,6 +137,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     }
 
+    if (Array.isArray(files)) {
+      for (let i = contentFiles.length - 1; i >= 0; i -= 1) {
+        if (contentFiles[i].contentId === id) {
+          contentFiles.splice(i, 1);
+        }
+      }
+
+      for (const file of files) {
+        contentFiles.push({
+          id: `file-${Date.now()}-${Math.random()}`,
+          contentId: id,
+          fileUrl: file.fileUrl,
+          fileType: file.fileType,
+          fileName: file.fileName,
+          fileSize: file.fileSize ?? 0,
+        });
+      }
+    }
+
     return ok(updated);
   }
 
@@ -113,14 +169,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       if (
-        !["all", "division", "team", "user"].includes(
+        !["all", "division", "user"].includes(
           target.targetType as string
         )
       ) {
         return badRequest("Invalid target type");
       }
 
-      if (target.targetType !== "all" && target.targetId && !isUuid(target.targetId)) {
+      if (
+        target.targetType !== "all" &&
+        (typeof target.targetId !== "string" || !target.targetId.trim())
+      ) {
         return badRequest("Invalid target id");
       }
     }
@@ -138,9 +197,30 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           targets: {
             deleteMany: {},
             create: targets.map((target: { targetType: string; targetId?: string | null }) => ({
-              targetType: target.targetType as "all" | "division" | "team" | "user",
+              targetType: target.targetType as "all" | "division" | "user",
               targetId: target.targetId ?? null,
             })),
+          },
+        }
+      : {};
+
+    const fileData = Array.isArray(files)
+      ? {
+          files: {
+            deleteMany: {},
+            create: files.map(
+              (file: {
+                fileUrl: string;
+                fileType: "pdf" | "docx" | "mp4" | "image" | "link";
+                fileName: string;
+                fileSize?: number;
+              }) => ({
+                fileUrl: file.fileUrl,
+                fileType: file.fileType,
+                fileName: file.fileName,
+                fileSize: file.fileSize ?? 0,
+              })
+            ),
           },
         }
       : {};
@@ -154,6 +234,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         summary: summary ?? null,
         summaryType: summaryType ?? "manual",
         ...targetData,
+        ...fileData,
       },
       include: {
         targets: true,

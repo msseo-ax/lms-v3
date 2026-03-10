@@ -1,7 +1,7 @@
 import type { TargetType } from "@/types/domain";
 
 interface TargetLike {
-  targetType: TargetType;
+  targetType: TargetType | "team";
   targetId: string | null;
 }
 
@@ -9,7 +9,7 @@ interface UserLike {
   id: string;
   name: string;
   divisionId: string | null;
-  teamId: string | null;
+  teamId?: string | null;
 }
 
 interface ReadLogLike {
@@ -36,15 +36,15 @@ export function getTargetUserIds(targets: TargetLike[], users: UserLike[]): stri
       continue;
     }
 
+    if (target.targetType === "user" && target.targetId) {
+      targetUserIds.add(target.targetId);
+      continue;
+    }
+
     if (target.targetType === "team") {
       users
         .filter((user) => user.teamId === target.targetId)
         .forEach((user) => targetUserIds.add(user.id));
-      continue;
-    }
-
-    if (target.targetType === "user" && target.targetId) {
-      targetUserIds.add(target.targetId);
     }
   }
 
@@ -54,7 +54,6 @@ export function getTargetUserIds(targets: TargetLike[], users: UserLike[]): stri
 export function getTargetLabels(
   targets: TargetLike[],
   divisions: OrgUnitLike[],
-  teams: OrgUnitLike[],
   users: Pick<UserLike, "id" | "name">[]
 ): string[] {
   return targets.map((target) => {
@@ -63,7 +62,7 @@ export function getTargetLabels(
       return divisions.find((item) => item.id === target.targetId)?.name ?? "본부";
     }
     if (target.targetType === "team") {
-      return teams.find((item) => item.id === target.targetId)?.name ?? "팀";
+      return "팀(legacy)";
     }
     return users.find((item) => item.id === target.targetId)?.name ?? "개인";
   });

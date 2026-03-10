@@ -23,10 +23,13 @@ export function ContentCard({ content }: ContentCardProps) {
   const categoryName = content.category?.name ?? "";
   const categoryColor =
     CATEGORY_COLORS[categoryName] ?? "bg-muted text-muted-foreground";
-  const targetLabel =
-    content.targetLabels.length > 0
-      ? content.targetLabels.join(" · ")
+  const visibleTargetLabels = content.targetLabels.slice(0, 2);
+  const hiddenTargetCount = Math.max(content.targetLabels.length - visibleTargetLabels.length, 0);
+  const targetSummary =
+    visibleTargetLabels.length > 0
+      ? `${visibleTargetLabels.join(" · ")}${hiddenTargetCount > 0 ? ` 외 ${hiddenTargetCount}명` : ""}`
       : "전체";
+  const fullTargetLabel = content.targetLabels.length > 0 ? content.targetLabels.join(" · ") : "전체";
 
   return (
     <Link href={`/contents/${content.id}`} className="group block">
@@ -46,8 +49,11 @@ export function ContentCard({ content }: ContentCardProps) {
           >
             {categoryName}
           </Badge>
-          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-            {targetLabel}
+          <span
+            className="inline-flex max-w-full items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+            title={fullTargetLabel}
+          >
+            <span className="truncate">{targetSummary}</span>
           </span>
         </div>
 

@@ -1,4 +1,4 @@
-import { categories, divisions, teams, users } from "@/lib/mock-db";
+import { categories, divisions, users } from "@/lib/mock-db";
 import { ContentForm } from "@/components/admin/content-form";
 
 export default async function AdminContentNewPage() {
@@ -7,10 +7,9 @@ export default async function AdminContentNewPage() {
   if (!isMockMode) {
     const { prisma } = await import("@/lib/prisma");
     if (prisma) {
-      const [dbCategories, dbDivisions, dbTeams, dbUsers] = await Promise.all([
+      const [dbCategories, dbDivisions, dbUsers] = await Promise.all([
         prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
         prisma.division.findMany({ orderBy: { name: "asc" } }),
-        prisma.team.findMany({ orderBy: { name: "asc" } }),
         prisma.user.findMany({ orderBy: { name: "asc" } }),
       ]);
 
@@ -18,7 +17,6 @@ export default async function AdminContentNewPage() {
         <ContentForm
           categories={dbCategories}
           divisions={dbDivisions}
-          teams={dbTeams}
           users={dbUsers}
         />
       );
@@ -29,7 +27,6 @@ export default async function AdminContentNewPage() {
     <ContentForm
       categories={categories}
       divisions={divisions}
-      teams={teams}
       users={users}
     />
   );
