@@ -19,12 +19,34 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  function recreateResponsePreservingCookies(previous: NextResponse) {
-    const next = createNextResponse();
-    previous.cookies.getAll().forEach(({ name, value }) => {
-      next.cookies.set(name, value);
+  const responseCookies: Array<{
+    name: string;
+    value: string;
+    options?: Parameters<NextResponse["cookies"]["set"]>[2];
+  }> = [];
+
+  function queueResponseCookies(
+    cookiesToSet: Array<{
+      name: string;
+      value: string;
+      options?: Parameters<NextResponse["cookies"]["set"]>[2];
+    }>
+  ) {
+    cookiesToSet.forEach(({ name, value, options }) => {
+      const currentIndex = responseCookies.findIndex((cookie) => cookie.name === name);
+      if (currentIndex >= 0) {
+        responseCookies[currentIndex] = { name, value, options };
+      } else {
+        responseCookies.push({ name, value, options });
+      }
     });
-    return next;
+  }
+
+  function applyQueuedCookies(response: NextResponse) {
+    responseCookies.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, options);
+    });
+    return response;
   }
 
   function applyPerfTiming(response: NextResponse) {
@@ -47,8 +69,6 @@ export async function middleware(request: NextRequest) {
     return applyPerfTiming(createNextResponse());
   }
 
-  let supabaseResponse = createNextResponse();
-
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -61,10 +81,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = recreateResponsePreservingCookies(supabaseResponse);
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          queueResponseCookies(cookiesToSet);
         },
       },
     }
@@ -81,22 +98,20 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-auth-user-email", user.email);
   }
 
-  supabaseResponse = recreateResponsePreservingCookies(supabaseResponse);
-
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/");
 
   if (!user && !isLoginPage && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return applyPerfTiming(NextResponse.redirect(url));
+    return applyPerfTiming(applyQueuedCookies(NextResponse.redirect(url)));
   }
 
   if (user && isLoginPage) {
-    return applyPerfTiming(NextResponse.redirect(new URL("/", request.url)));
+    return applyPerfTiming(applyQueuedCookies(NextResponse.redirect(new URL("/", request.url))));
   }
 
-  return applyPerfTiming(supabaseResponse);
+  return applyPerfTiming(applyQueuedCookies(createNextResponse()));
 }
 
 export const config = {
