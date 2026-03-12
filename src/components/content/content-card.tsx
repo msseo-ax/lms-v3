@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Paperclip, Clock, Sparkles } from "lucide-react";
+import { Paperclip, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDate } from "@/lib/utils";
 import type { ContentWithMeta } from "@/types/domain";
@@ -63,9 +63,6 @@ export function ContentCard({ content }: ContentCardProps) {
 
         {content.summary && (
           <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            {content.summaryType === "ai" && (
-              <Sparkles className="mr-1 inline-block h-3 w-3 text-purple-400" />
-            )}
             {content.summary}
           </p>
         )}

@@ -15,11 +15,6 @@ enum Role {
   user
 }
 
-enum SummaryType {
-  manual
-  ai
-}
-
 enum FileType {
   pdf
   docx
@@ -98,7 +93,6 @@ model Content {
   title       String          @db.VarChar(255)
   body        String?         @db.Text
   summary     String?         @db.Text
-  summaryType SummaryType     @default(manual) @map("summary_type")
   categoryId  String          @map("category_id") @db.Uuid
   createdBy   String          @map("created_by") @db.Uuid
   createdAt   DateTime        @default(now()) @map("created_at")

@@ -1,6 +1,6 @@
 # HOMES LMS v3
 
-Modern LMS built with Next.js 14 (App Router), Prisma, Supabase Auth, AWS S3, and optional OpenAI/Slack integrations.
+Modern LMS built with Next.js 14 (App Router), Prisma, Supabase Auth, AWS S3, and optional Slack integration.
 
 ## 1) Quick Start (Mock Mode)
 
@@ -35,7 +35,6 @@ Set these in `.env.local`:
 Optional integrations:
 
 - S3 upload: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `S3_PUBLIC_BASE_URL`
-- AI summary: `OPENAI_API_KEY`
 - Slack reminders: `SLACK_WEBHOOK_URL`
 
 ### Database migration and seed
@@ -76,7 +75,6 @@ Recommended smoke checks:
 - Login with a `@homes.global` Google account
 - Open `/`, `/contents/:id`, `/mypage`
 - Open `/admin/contents`, `/admin/dashboard`, `/admin/categories`
-- Verify `POST /api/ai/summary` with `{"text":"..."}` payload
 
 ## 3) Build
 

@@ -7,7 +7,7 @@ import {
   divisions,
   users,
 } from "@/lib/mock-db";
-import type { SummaryType, TargetType } from "@/types/domain";
+import type { TargetType } from "@/types/domain";
 
 function isValidTargetType(value: string): value is TargetType {
   return value === "all" || value === "division" || value === "user";
@@ -47,7 +47,6 @@ export default async function AdminContentEditPage({
           categoryId: content.categoryId,
           body: content.body ?? "",
           summary: content.summary ?? "",
-          summaryType: content.summaryType as SummaryType,
           targets,
         }}
       />
@@ -81,7 +80,6 @@ export default async function AdminContentEditPage({
         categoryId: content.categoryId,
         body: content.body ?? "",
         summary: content.summary ?? "",
-        summaryType: content.summaryType as SummaryType,
         targets: content.targets
           .filter((item) => isValidTargetType(item.targetType))
           .map((item) => ({

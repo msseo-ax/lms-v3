@@ -168,7 +168,6 @@ async function runApiContentsGetScenario(): Promise<Omit<ScenarioResult, "scenar
         title: true,
         body: true,
         summary: true,
-        summaryType: true,
         categoryId: true,
         createdBy: true,
         createdAt: true,

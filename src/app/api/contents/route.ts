@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
       title: true,
       body: true,
       summary: true,
-      summaryType: true,
       categoryId: true,
       createdBy: true,
       createdAt: true,
@@ -91,7 +90,6 @@ export async function GET(request: NextRequest) {
       title: content.title,
       body: content.body,
       summary: content.summary,
-      summaryType: content.summaryType,
       categoryId: content.categoryId,
       createdBy: content.createdBy,
       createdAt: content.createdAt,
@@ -110,7 +108,7 @@ export async function POST(request: NextRequest) {
   if (!user || user.role !== "admin") return unauthorized();
 
   const body = await request.json();
-  const { title, categoryId, body: contentBody, summary, summaryType, targets, files } = body;
+  const { title, categoryId, body: contentBody, summary, targets, files } = body;
 
   if (!title || !categoryId) return badRequest("title and categoryId are required");
 
@@ -150,7 +148,6 @@ export async function POST(request: NextRequest) {
       title,
       body: contentBody ?? null,
       summary: summary ?? null,
-      summaryType: summaryType ?? "manual",
       categoryId,
       createdBy: user.id,
       createdAt: new Date().toISOString(),
@@ -217,7 +214,6 @@ export async function POST(request: NextRequest) {
         title,
         body: contentBody,
         summary,
-        summaryType: summaryType ?? "manual",
         categoryId,
         createdBy: user.id,
         targets: {

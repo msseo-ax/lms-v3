@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Content, ContentFile, Category, User } from "@/types/domain";
-import { formatDate, formatFileSize, cn } from "@/lib/utils";
+import { formatDate, formatFileSize } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,6 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Download,
-  Sparkles,
   Clock,
   User as UserIcon,
 } from "lucide-react";
@@ -89,18 +88,6 @@ export function ContentViewer({
           <Clock className="h-3.5 w-3.5" />
           {formatDate(content.createdAt)}
         </span>
-        <span>·</span>
-        <Badge
-          variant="outline"
-          className={cn(
-            "text-xs",
-            content.summaryType === "ai"
-              ? "border-violet-300 text-violet-600"
-              : "border-slate-300 text-slate-600"
-          )}
-        >
-          {content.summaryType === "ai" ? "AI 요약" : "직접 작성"}
-        </Badge>
       </div>
 
       <Separator />
@@ -108,14 +95,9 @@ export function ContentViewer({
       {content.summary && (
         <Card className="my-6 border-slate-200 bg-slate-50/60">
           <CardContent className="p-4">
-            <div className="flex items-start gap-2">
-              {content.summaryType === "ai" && (
-                <Sparkles className="h-4 w-4 text-violet-500 mt-0.5 shrink-0" />
-              )}
-              <p className="text-sm text-slate-700 leading-relaxed">
-                {content.summary}
-              </p>
-            </div>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              {content.summary}
+            </p>
           </CardContent>
         </Card>
       )}

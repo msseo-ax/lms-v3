@@ -75,7 +75,6 @@ export default async function ContentDetailPage({
         title: content.title,
         body: content.body,
         summary: content.summary,
-        summaryType: content.summaryType,
         categoryId: content.categoryId,
         createdBy: content.createdBy,
         createdAt: content.createdAt.toISOString(),

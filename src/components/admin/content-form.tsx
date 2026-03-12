@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import type { Category, Division, User, TargetType, SummaryType } from "@/types/domain";
+import type { Category, Division, User, TargetType } from "@/types/domain";
 import { cn, formatFileSize } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,6 @@ import {
   Film,
   Image as ImageIcon,
   Link2,
-  Sparkles,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -54,7 +53,6 @@ interface ContentFormProps {
     categoryId: string;
     body: string;
     summary: string;
-    summaryType: SummaryType;
     targets: { targetType: TargetType; targetId: string | null }[];
   };
 }
@@ -156,12 +154,8 @@ export function ContentForm({
     deriveInitialTarget(initialValues?.targets)
   );
   const [body, setBody] = useState(initialValues?.body ?? "");
-  const [summaryMode, setSummaryMode] = useState<SummaryType>(
-    initialValues?.summaryType ?? "manual"
-  );
   const [summary, setSummary] = useState(initialValues?.summary ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [links, setLinks] = useState<string[]>([]);
   const [linkInput, setLinkInput] = useState("");
@@ -203,34 +197,6 @@ export function ContentForm({
 
   function removeLink(idx: number) {
     setLinks((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  async function handleGenerateAiSummary() {
-    if (!body.trim()) {
-      alert("본문을 먼저 입력해주세요.");
-      return;
-    }
-
-    setIsGeneratingSummary(true);
-    try {
-      const response = await fetch("/api/ai/summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: body }),
-      });
-
-      const data = (await response.json()) as { summary?: string; error?: string };
-      if (!response.ok) {
-        alert(data.error ?? "AI 요약 생성에 실패했습니다.");
-        return;
-      }
-
-      setSummary(data.summary ?? "");
-    } catch {
-      alert("AI 요약 생성 중 오류가 발생했습니다.");
-    } finally {
-      setIsGeneratingSummary(false);
-    }
   }
 
   async function handleSubmit() {
@@ -343,7 +309,6 @@ export function ContentForm({
           categoryId,
           body,
           summary,
-          summaryType: summaryMode,
           targets,
           ...(shouldSendFiles
             ? {
@@ -444,71 +409,13 @@ export function ContentForm({
 
           <Separator />
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>요약</Label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSummaryMode("manual");
-                    setSummary("");
-                  }}
-                  className={cn(
-                    "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                    summaryMode === "manual"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  )}
-                >
-                  직접 작성
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSummaryMode("ai");
-                    setSummary("");
-                  }}
-                  className={cn(
-                    "flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                    summaryMode === "ai"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  )}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  AI 자동 생성
-                </button>
-              </div>
-            </div>
-
-            {summaryMode === "ai" && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateAiSummary}
-                className="gap-1.5"
-                disabled={isGeneratingSummary}
-              >
-                <Sparkles className="h-4 w-4" />
-                {isGeneratingSummary ? "생성 중..." : "AI 요약 생성"}
-              </Button>
-            )}
-
+          <div className="space-y-2">
+            <Label>요약</Label>
             <Textarea
-              placeholder={
-                summaryMode === "ai"
-                  ? "AI 요약 생성 버튼을 클릭하세요..."
-                  : "요약 내용을 직접 입력하세요..."
-              }
+              placeholder="요약 내용을 입력하세요..."
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              readOnly={summaryMode === "ai" && summary.length > 0}
               rows={4}
-              className={cn(
-                summaryMode === "ai" && summary.length > 0 && "bg-muted"
-              )}
             />
           </div>
 

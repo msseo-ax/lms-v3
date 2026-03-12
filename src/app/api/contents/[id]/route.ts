@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { id } = context.params;
   const body = await request.json();
-  const { title, categoryId, body: contentBody, summary, summaryType, targets, files } = body;
+  const { title, categoryId, body: contentBody, summary, targets, files } = body;
 
   if (!title || !categoryId) {
     return badRequest("title and categoryId are required");
@@ -114,7 +114,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       categoryId,
       body: contentBody ?? null,
       summary: summary ?? null,
-      summaryType: summaryType ?? "manual",
       updatedAt: new Date().toISOString(),
     };
 
@@ -232,7 +231,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         categoryId,
         body: contentBody ?? null,
         summary: summary ?? null,
-        summaryType: summaryType ?? "manual",
         ...targetData,
         ...fileData,
       },

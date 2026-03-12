@@ -1,5 +1,4 @@
 export type Role = "admin" | "user";
-export type SummaryType = "manual" | "ai";
 export type FileType = "pdf" | "docx" | "mp4" | "image" | "link";
 export type TargetType = "all" | "division" | "user";
 
@@ -47,7 +46,6 @@ export interface Content {
   title: string;
   body: string | null;
   summary: string | null;
-  summaryType: SummaryType;
   categoryId: string;
   createdBy: string;
   createdAt: string;
