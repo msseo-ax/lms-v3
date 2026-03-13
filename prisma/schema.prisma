@@ -63,6 +63,7 @@ model User {
   divisionId     String?          @map("division_id") @db.Uuid
   teamId         String?          @map("team_id") @db.Uuid
   avatarUrl      String?          @map("avatar_url")
+  slackUserId    String?          @map("slack_user_id") @db.VarChar(50)
   createdAt      DateTime         @default(now()) @map("created_at")
   division       Division?        @relation(fields: [divisionId], references: [id], onDelete: SetNull)
   team           Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)

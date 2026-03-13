@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { ok, badRequest, unauthorized } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import { contents, contentFiles, contentTargets, categories, getTargetLabels, getContentReadRate, readLogs } from "@/lib/mock-db";
+import { getTargetUserIds } from "@/lib/targeting";
+import { sendSlackDmBulk } from "@/lib/slack";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -241,6 +243,25 @@ export async function POST(request: NextRequest) {
       },
       include: { category: true, targets: true, files: true },
     });
+
+    // 콘텐츠 대상자에게 Slack DM 알림 (비동기, 실패해도 콘텐츠 생성에 영향 없음)
+    if (content.targets.length > 0) {
+      const allUsers = await prisma.user.findMany({
+        select: { id: true, name: true, divisionId: true, teamId: true, slackUserId: true },
+      });
+      const targetUserIds = getTargetUserIds(content.targets, allUsers);
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+      const dmUsers = allUsers
+        .filter((u) => targetUserIds.includes(u.id) && u.slackUserId)
+        .map((u) => ({
+          slackUserId: u.slackUserId!,
+          text: `📢 *[새 콘텐츠]* ${title}\n\n새로운 학습 콘텐츠가 등록되었습니다.\n확인하기: ${siteUrl}/contents/${content.id}`,
+        }));
+
+      if (dmUsers.length > 0) {
+        sendSlackDmBulk(dmUsers).catch(() => {});
+      }
+    }
 
     return ok(content);
   } catch {

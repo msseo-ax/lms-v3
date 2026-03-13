@@ -106,26 +106,31 @@ async function main() {
       email.split("@")[0];
     const avatarUrl = member.profile.image_192 || null;
 
+    const slackUserId = member.id;
     const existing = await prisma.user.findUnique({ where: { email } });
 
     if (existing) {
-      if (existing.name === name && existing.avatarUrl === avatarUrl) {
+      if (
+        existing.name === name &&
+        existing.avatarUrl === avatarUrl &&
+        existing.slackUserId === slackUserId
+      ) {
         console.log(`  건너뜀: ${email} (변경 없음)`);
         skipped++;
       } else {
-        // 이름/아바타만 업데이트 (role, division 건드리지 않음)
+        // 이름/아바타/slackUserId 업데이트 (role, division 건드리지 않음)
         await prisma.user.update({
           where: { email },
-          data: { name, avatarUrl },
+          data: { name, avatarUrl, slackUserId },
         });
-        console.log(`  업데이트: ${email} (${name})`);
+        console.log(`  업데이트: ${email} (${name}, slack: ${slackUserId})`);
         updated++;
       }
     } else {
       await prisma.user.create({
-        data: { email, name, avatarUrl, role: "user" },
+        data: { email, name, avatarUrl, slackUserId, role: "user" },
       });
-      console.log(`  생성: ${email} (${name})`);
+      console.log(`  생성: ${email} (${name}, slack: ${slackUserId})`);
       created++;
     }
   }

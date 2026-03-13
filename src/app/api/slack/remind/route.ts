@@ -3,6 +3,7 @@ import { ok, badRequest, unauthorized } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import { contents, users, readLogs, contentTargets } from "@/lib/mock-db";
 import { getTargetUserIds } from "@/lib/targeting";
+import { sendSlackDmBulk } from "@/lib/slack";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -11,7 +12,12 @@ function isUuid(value: string) {
   return UUID_RE.test(value);
 }
 
-function getUnreadUserNamesForMock(contentId: string): string[] {
+interface UnreadUser {
+  name: string;
+  slackUserId: string | null;
+}
+
+function getUnreadUsersForMock(contentId: string): UnreadUser[] {
   const targets = contentTargets.filter((target) => target.contentId === contentId);
   const targetUserIds = getTargetUserIds(targets, users);
   const readUserIds = new Set(
@@ -20,8 +26,11 @@ function getUnreadUserNamesForMock(contentId: string): string[] {
 
   return targetUserIds
     .filter((userId) => !readUserIds.has(userId))
-    .map((userId) => users.find((user) => user.id === userId)?.name ?? "")
-    .filter(Boolean);
+    .map((userId) => {
+      const user = users.find((u) => u.id === userId);
+      return { name: user?.name ?? "", slackUserId: null };
+    })
+    .filter((u) => u.name);
 }
 
 export async function POST(request: NextRequest) {
@@ -33,18 +42,17 @@ export async function POST(request: NextRequest) {
 
   if (!contentId) return badRequest("contentId is required");
 
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   const isMockMode = process.env.USE_MOCK_DB === "true";
 
   let contentTitle = "";
-  let unreadNames: string[] = [];
+  let unreadUsers: UnreadUser[] = [];
 
   if (isMockMode) {
     const content = contents.find((item) => item.id === contentId);
     if (!content) return badRequest("Content not found");
 
     contentTitle = content.title;
-    unreadNames = getUnreadUserNamesForMock(contentId);
+    unreadUsers = getUnreadUsersForMock(contentId);
   } else {
     if (!isUuid(contentId)) return badRequest("Invalid content id");
 
@@ -58,7 +66,7 @@ export async function POST(request: NextRequest) {
       }),
       prisma.contentTarget.findMany({ where: { contentId } }),
       prisma.user.findMany({
-        select: { id: true, name: true, divisionId: true, teamId: true },
+        select: { id: true, name: true, divisionId: true, teamId: true, slackUserId: true },
       }),
       prisma.readLog.findMany({ where: { contentId }, select: { userId: true } }),
     ]);
@@ -70,47 +78,45 @@ export async function POST(request: NextRequest) {
     const unreadUserIds = targetUserIds.filter((id) => !readUserIds.has(id));
 
     contentTitle = content.title;
-    unreadNames = unreadUserIds
-      .map((id) => dbUsers.find((dbUser) => dbUser.id === id)?.name ?? "")
-      .filter(Boolean);
+    unreadUsers = unreadUserIds
+      .map((id) => {
+        const dbUser = dbUsers.find((u) => u.id === id);
+        return { name: dbUser?.name ?? "", slackUserId: dbUser?.slackUserId ?? null };
+      })
+      .filter((u) => u.name);
   }
 
-  if (unreadNames.length === 0) {
+  if (unreadUsers.length === 0) {
     return ok({ sent: false, message: "모든 대상자가 이미 열람했습니다." });
   }
 
-  const slackMessage = {
-    text: `📢 *[LMS 리마인드]* ${contentTitle}\n\n미열람자: ${unreadNames.join(", ")} (${unreadNames.length}명)\n\n확인하기: ${process.env.NEXT_PUBLIC_SITE_URL}/contents/${contentId}`,
-  };
+  const unreadNames = unreadUsers.map((u) => u.name);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
 
-  if (isMockMode || !webhookUrl) {
-    console.log("[Slack Mock]", slackMessage.text);
+  // 개인 DM 전송
+  const dmTargets = unreadUsers
+    .filter((u) => u.slackUserId)
+    .map((u) => ({
+      slackUserId: u.slackUserId!,
+      text: `📢 *[LMS 리마인드]* ${contentTitle}\n\n아직 열람하지 않은 콘텐츠가 있습니다.\n확인하기: ${siteUrl}/contents/${contentId}`,
+    }));
+
+  if (dmTargets.length === 0) {
     return ok({
-      sent: true,
-      mock: true,
-      message: `${unreadNames.length}명에게 리마인드를 발송했습니다. (mock)`,
+      sent: false,
+      message: `미열람자 ${unreadNames.length}명이 있지만 Slack 연동된 사용자가 없습니다.`,
       unreadNames,
     });
   }
 
-  try {
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(slackMessage),
-    });
+  const result = await sendSlackDmBulk(dmTargets);
 
-    if (!response.ok) {
-      return ok({ sent: false, message: "Slack 발송에 실패했습니다." });
-    }
-
-    return ok({
-      sent: true,
-      mock: false,
-      message: `${unreadNames.length}명에게 리마인드를 발송했습니다.`,
-      unreadNames,
-    });
-  } catch {
-    return ok({ sent: false, message: "Slack 연결에 실패했습니다." });
-  }
+  return ok({
+    sent: result.sent > 0,
+    dryRun: result.dryRun,
+    message: result.dryRun
+      ? `${dmTargets.length}명에게 리마인드를 발송했습니다. (dry run)`
+      : `${result.sent}명에게 리마인드를 발송했습니다.${result.failed > 0 ? ` (${result.failed}명 실패)` : ""}`,
+    unreadNames,
+  });
 }
