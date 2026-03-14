@@ -1,16 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ContentRow } from "@/components/admin/content-row";
 import { Plus } from "lucide-react";
 import { getAdminContentsData } from "@/lib/server/data/admin-contents";
+import { AdminContentsClient } from "@/components/admin/admin-contents-client";
 
 export default async function AdminContentsPage() {
   const contentList = await getAdminContentsData();
@@ -32,33 +24,7 @@ export default async function AdminContentsPage() {
         </Button>
       </div>
 
-      <Card>
-        <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[42%]">제목</TableHead>
-                <TableHead className="w-40">카테고리</TableHead>
-                <TableHead className="w-36">대상</TableHead>
-                <TableHead className="w-24">생성일</TableHead>
-                <TableHead className="w-20">열람률</TableHead>
-              <TableHead className="w-24">관리</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contentList.map((c) => (
-              <ContentRow
-                key={c.id}
-                id={c.id}
-                title={c.title}
-                categoryName={c.categoryName}
-                targetLabels={c.targetLabels}
-                createdAt={c.createdAt}
-                readRate={c.readRate}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <AdminContentsClient contentList={contentList} />
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Tag } from "lucide-react";
+import { SearchInput } from "@/components/shared/search-input";
 
 export default function CategoriesPage() {
   const [cats, setCats] = useState<Category[]>([]);
@@ -31,6 +32,7 @@ export default function CategoriesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   function slugify(value: string): string {
     return value
@@ -41,10 +43,14 @@ export default function CategoriesPage() {
       .replace(/-+/g, "-");
   }
 
-  const sortedCats = useMemo(
-    () => [...cats].sort((a, b) => a.sortOrder - b.sortOrder),
-    [cats]
-  );
+  const sortedCats = useMemo(() => {
+    let result = [...cats].sort((a, b) => a.sortOrder - b.sortOrder);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((cat) => cat.name.toLowerCase().includes(q));
+    }
+    return result;
+  }, [cats, searchQuery]);
 
   useEffect(() => {
     void fetchCategories();
@@ -201,8 +207,20 @@ export default function CategoriesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="카테고리명 검색..."
+              className="w-64"
+            />
+          </div>
           {loading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">불러오는 중...</div>
+          ) : sortedCats.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              검색 결과가 없습니다.
+            </div>
           ) : (
             <Table>
               <TableHeader>
