@@ -130,17 +130,20 @@ async function ensureDivisionIds(
   divisionMap: Map<string, string>
 ): Promise<void> {
   for (const divisionName of divisionNames) {
-    if (divisionMap.has(divisionName)) continue;
+    const key = divisionName.toLowerCase();
+    if (divisionMap.has(key)) continue;
 
-    let division = await prisma.division.findFirst({ where: { name: divisionName } });
+    let division = await prisma.division.findFirst({
+      where: { name: { equals: divisionName, mode: "insensitive" } },
+    });
     if (!division) {
       division = await prisma.division.create({ data: { name: divisionName } });
       console.log(`  생성: ${divisionName}`);
     } else {
-      console.log(`  기존: ${divisionName}`);
+      console.log(`  기존: ${division.name}`);
     }
 
-    divisionMap.set(divisionName, division.id);
+    divisionMap.set(key, division.id);
   }
 }
 
@@ -202,7 +205,7 @@ async function main() {
   let skipped = 0;
 
   for (const [email, { divisionName }] of Array.from(userOrgMap.entries())) {
-    const divisionId = divisionName ? divisionMap.get(divisionName) : undefined;
+    const divisionId = divisionName ? divisionMap.get(divisionName.toLowerCase()) : undefined;
 
     if (!divisionId) {
       skipped++;
