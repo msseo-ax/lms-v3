@@ -7,12 +7,10 @@ import { cn, formatDate } from "@/lib/utils";
 import type { ContentWithMeta } from "@/types/domain";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "사내 비전/문화": "bg-indigo-500/10 text-indigo-500",
-  "업무 매뉴얼": "bg-blue-500/10 text-blue-500",
-  "정책/규정": "bg-amber-500/10 text-amber-500",
-  "시장 리서치/인사이트": "bg-emerald-500/10 text-emerald-500",
   온보딩: "bg-purple-500/10 text-purple-500",
-  공지사항: "bg-rose-500/10 text-rose-500",
+  법정필수교육: "bg-rose-500/10 text-rose-500",
+  리더십: "bg-indigo-500/10 text-indigo-500",
+  성장: "bg-emerald-500/10 text-emerald-500",
 };
 
 interface ContentCardProps {

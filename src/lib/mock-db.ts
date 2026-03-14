@@ -19,12 +19,10 @@ export const users: User[] = [
 ];
 
 export const categories: Category[] = [
-  { id: "cat-1", name: "사내 비전/문화", slug: "vision-culture", sortOrder: 1 },
-  { id: "cat-2", name: "업무 매뉴얼", slug: "work-manual", sortOrder: 2 },
-  { id: "cat-3", name: "정책/규정", slug: "policy", sortOrder: 3 },
-  { id: "cat-4", name: "시장 리서치/인사이트", slug: "market-insight", sortOrder: 4 },
-  { id: "cat-5", name: "온보딩", slug: "onboarding", sortOrder: 5 },
-  { id: "cat-6", name: "공지사항", slug: "notice", sortOrder: 6 },
+  { id: "cat-1", name: "온보딩", slug: "onboarding", sortOrder: 1 },
+  { id: "cat-2", name: "법정필수교육", slug: "legal-required", sortOrder: 2 },
+  { id: "cat-3", name: "리더십", slug: "leadership", sortOrder: 3 },
+  { id: "cat-4", name: "성장", slug: "growth", sortOrder: 4 },
 ];
 
 export const contents: Content[] = [

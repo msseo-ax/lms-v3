@@ -69,13 +69,19 @@ async function main() {
     },
   });
 
+  // 기존 콘텐츠 및 카테고리 정리 (카테고리 재구성)
+  await prisma.readLog.deleteMany();
+  await prisma.fileAccessLog.deleteMany();
+  await prisma.contentTarget.deleteMany();
+  await prisma.contentFile.deleteMany();
+  await prisma.content.deleteMany();
+  await prisma.category.deleteMany();
+
   const defaultCategories = [
-    { name: "사내 비전/문화", slug: "vision-culture", sortOrder: 1 },
-    { name: "업무 매뉴얼", slug: "work-manual", sortOrder: 2 },
-    { name: "정책/규정", slug: "policy", sortOrder: 3 },
-    { name: "시장 리서치/인사이트", slug: "market-insight", sortOrder: 4 },
-    { name: "온보딩", slug: "onboarding", sortOrder: 5 },
-    { name: "공지사항", slug: "notice", sortOrder: 6 },
+    { name: "온보딩", slug: "onboarding", sortOrder: 1 },
+    { name: "법정필수교육", slug: "legal-required", sortOrder: 2 },
+    { name: "리더십", slug: "leadership", sortOrder: 3 },
+    { name: "성장", slug: "growth", sortOrder: 4 },
   ];
 
   for (const cat of defaultCategories) {
