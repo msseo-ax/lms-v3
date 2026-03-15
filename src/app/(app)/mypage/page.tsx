@@ -1,17 +1,16 @@
-import Link from "next/link";
 import {
   BookOpen,
   BookOpenCheck,
   Eye,
   EyeOff,
-  FileText,
 } from "lucide-react";
 import { getMyPageData } from "@/lib/server/data/mypage";
-import { formatDate, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { MyPageContents } from "@/components/mypage/mypage-contents";
 
 export default async function MyPage() {
   const data = await getMyPageData();
@@ -93,72 +92,10 @@ export default async function MyPage() {
         })}
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">미완료 콘텐츠</h2>
-        {incompleteContents.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              <Eye className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
-              <p>모든 콘텐츠를 열람 완료했습니다!</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {incompleteContents.map((content) => {
-              const category = data.categories.find((item) => item.id === content.categoryId);
-              return (
-                <Link key={content.id} href={`/contents/${content.id}`}>
-                  <Card className="transition-colors hover:bg-muted/50">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-sm">{content.title}</h3>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            <Badge variant="secondary" className="text-xs">
-                              {category?.name}
-                            </Badge>
-                            {content.targetLabels.map((label) => (
-                              <Badge
-                                key={label}
-                                variant="outline"
-                                className="text-[11px] px-1.5 py-0"
-                              >
-                                {label}
-                              </Badge>
-                            ))}
-                            {content.fileCount > 0 && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                <FileText className="h-3 w-3" />
-                                {content.fileCount}
-                              </span>
-                            )}
-                          </div>
-                          {content.summary && (
-                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
-                              {content.summary}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(content.createdAt)}
-                          </span>
-                          <span className={cn(
-                            "text-[11px] font-medium",
-                            content.readStatus === "reading" ? "text-orange-600" : "text-red-500"
-                          )}>
-                            {content.readStatus === "reading" ? "열람중" : "미열람"}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <MyPageContents
+        contents={incompleteContents}
+        categories={data.categories}
+      />
     </div>
   );
 }

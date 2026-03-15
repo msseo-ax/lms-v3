@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { ReadStatusCard } from "@/components/admin/read-status-card";
+import { DashboardContentGrid } from "@/components/admin/dashboard-content-grid";
 import {
   FileText,
   Users as UsersIcon,
@@ -72,25 +72,7 @@ export default async function AdminDashboardPage() {
         })}
       </div>
 
-        <div>
-          <h2 className="text-lg font-semibold mb-4">콘텐츠별 열람 현황</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {data.contentData.map((contentRow) => (
-              <ReadStatusCard
-                key={contentRow.id}
-                contentId={contentRow.id}
-                title={contentRow.title}
-                categoryName={contentRow.categoryName}
-                readRate={contentRow.readRate}
-                completedCount={contentRow.completedCount}
-                readingCount={contentRow.readingCount}
-                totalCount={contentRow.totalCount}
-                targetLabels={contentRow.targetLabels}
-                incompleteUsers={contentRow.incompleteUsers}
-              />
-            ))}
-          </div>
-      </div>
+      <DashboardContentGrid contentData={data.contentData} />
     </div>
   );
 }
