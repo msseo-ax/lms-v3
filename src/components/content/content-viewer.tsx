@@ -99,7 +99,7 @@ export function ContentViewer({
 
       {content.body && (
         <div
-          className="my-6 text-base leading-7 text-slate-800 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_li]:mb-1 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4 [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600 [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_pre]:bg-slate-100 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-4"
+          className="my-6 text-base leading-7 text-slate-800 overflow-hidden [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_li]:mb-1 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4 [&_a]:text-blue-600 [&_a]:underline [&_a]:break-all [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600 [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:break-all [&_pre]:bg-slate-100 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-4 [&_img]:max-w-full [&_img]:h-auto [&_table]:block [&_table]:overflow-x-auto"
           dangerouslySetInnerHTML={{ __html: content.body }}
         />
       )}
@@ -160,7 +160,7 @@ export function ContentViewer({
                       <iframe
                         src={getAccessUrl(file.fileUrl, file.id)}
                         title={file.fileName}
-                        className="w-full h-[600px]"
+                        className="w-full h-[50vh] sm:h-[600px]"
                       />
                     </div>
                   )}
@@ -181,6 +181,8 @@ export function ContentViewer({
                       <video
                         src={getAccessUrl(file.fileUrl, file.id)}
                         controls
+                        playsInline
+                        preload="metadata"
                         className="w-full"
                       >
                         <track kind="captions" />
@@ -189,11 +191,13 @@ export function ContentViewer({
                   )}
 
                   {file.fileType === "audio" && (
-                    <div className="mt-2 rounded-lg border p-3">
+                    <div className="mt-2 rounded-lg border p-2 sm:p-3 overflow-hidden">
                       <audio
                         src={getAccessUrl(file.fileUrl, file.id)}
                         controls
-                        className="w-full"
+                        preload="metadata"
+                        className="w-full max-w-full"
+                        style={{ minWidth: 0 }}
                       />
                     </div>
                   )}
