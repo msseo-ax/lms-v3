@@ -174,7 +174,7 @@ export function TargetPicker({
               검색 결과가 없습니다.
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 sm:gap-3">
               {filteredDivisions.map((div) => {
                 const count = divisionUserCounts.get(div.id) ?? 0;
                 return (
@@ -240,7 +240,7 @@ export function TargetPicker({
                   </span>
                 </button>
                 {expanded && (
-                  <div className="grid grid-cols-4 gap-2 pl-5 pt-1">
+                  <div className="grid grid-cols-2 gap-2 pl-5 pt-1 sm:grid-cols-3 md:grid-cols-4">
                     {divUsers.map((user) => {
                       const includedByDivision = isIncludedByDivision(user);
                       const explicitlySelected = value.userIds.includes(user.id);
@@ -289,7 +289,7 @@ export function TargetPicker({
                   </span>
                 </button>
                 {expanded && (
-                  <div className="grid grid-cols-4 gap-2 pl-5 pt-1">
+                  <div className="grid grid-cols-2 gap-2 pl-5 pt-1 sm:grid-cols-3 md:grid-cols-4">
                     {unassignedUsers.map((user) => {
                       const includedByDivision = isIncludedByDivision(user);
                       const explicitlySelected = value.userIds.includes(user.id);

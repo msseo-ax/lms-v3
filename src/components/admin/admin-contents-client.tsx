@@ -88,7 +88,7 @@ export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="제목 검색..."
-          className="w-64"
+          className="w-full sm:w-64"
         />
         <FilterDropdown
           label="카테고리"
@@ -111,16 +111,16 @@ export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
         </div>
       </ListToolbar>
 
-      <Card>
-        <Table>
+      <Card className="overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[42%]">제목</TableHead>
-              <TableHead className="w-40">카테고리</TableHead>
-              <TableHead className="w-36">대상</TableHead>
+              <TableHead>제목</TableHead>
+              <TableHead className="w-32">카테고리</TableHead>
+              <TableHead className="w-32">대상</TableHead>
               <TableHead className="w-24">생성일</TableHead>
               <TableHead className="w-20">열람률</TableHead>
-              <TableHead className="w-24">관리</TableHead>
+              <TableHead className="w-20">관리</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -69,7 +69,7 @@ export function FeedFilters({ contents, categories }: FeedFiltersProps) {
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="제목 검색..."
-            className="w-64"
+            className="w-full sm:w-64"
           />
           <FilterDropdown
             label="카테고리"

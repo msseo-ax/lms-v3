@@ -87,7 +87,7 @@ export function DashboardContentGrid({ contentData }: DashboardContentGridProps)
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="제목 검색..."
-          className="w-64"
+          className="w-full sm:w-64"
         />
         <FilterDropdown
           label="카테고리"
@@ -110,7 +110,7 @@ export function DashboardContentGrid({ contentData }: DashboardContentGridProps)
         </div>
       </ListToolbar>
 
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2">
         {filtered.length === 0 ? (
           <p className="col-span-2 py-12 text-center text-sm text-muted-foreground">
             검색 결과가 없습니다.

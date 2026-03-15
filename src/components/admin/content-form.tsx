@@ -348,7 +348,7 @@ export function ContentForm({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-6 px-4 sm:space-y-8 sm:px-0">
       <div>
           <h1 className="text-2xl font-bold tracking-tight">
             {mode === "edit" ? "콘텐츠 수정" : "콘텐츠 등록"}
@@ -361,7 +361,7 @@ export function ContentForm({
         </div>
 
       <Card>
-        <CardContent className="space-y-8 p-6">
+        <CardContent className="space-y-6 p-4 sm:space-y-8 sm:p-6">
           <div className="space-y-2">
             <Label htmlFor="title">
               제목 <span className="text-destructive">*</span>

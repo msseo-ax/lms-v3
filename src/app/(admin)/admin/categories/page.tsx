@@ -163,7 +163,7 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">카테고리 관리</h1>
           <p className="text-muted-foreground mt-1">콘텐츠 분류를 위한 카테고리를 관리합니다</p>
@@ -212,7 +212,7 @@ export default function CategoriesPage() {
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="카테고리명 검색..."
-              className="w-64"
+              className="w-full sm:w-64"
             />
           </div>
           {loading ? (
