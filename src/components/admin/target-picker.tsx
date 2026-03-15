@@ -59,15 +59,13 @@ export function TargetPicker({
     onChange({ ...value, userIds: value.userIds.filter((item) => item !== id) });
   }
 
-  const nonAdminUsers = users.filter((u) => u.role !== "admin");
-
   const filteredUsers = userSearch.trim()
-    ? nonAdminUsers.filter(
+    ? users.filter(
         (u) =>
           u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
           u.email.toLowerCase().includes(userSearch.toLowerCase())
       )
-    : nonAdminUsers;
+    : users;
 
   const assignedUsers = filteredUsers.filter((u) => u.divisionId);
   const unassignedUsers = filteredUsers.filter((u) => !u.divisionId);
