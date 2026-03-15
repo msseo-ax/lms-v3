@@ -76,19 +76,28 @@ export async function GET(request: NextRequest) {
     return badRequest("Invalid fileUrl protocol");
   }
 
+  const resolve = request.nextUrl.searchParams.get("resolve") === "true";
+
   const isMockUpload = parsed.pathname.startsWith("/mock/uploads/");
   if (isMockUpload) {
+    if (resolve) return NextResponse.json({ url: parsed.toString() });
     return NextResponse.redirect(parsed);
   }
 
   const key = extractS3Key(fileUrl, parsed);
   if (!key) {
+    if (resolve) return NextResponse.json({ url: fileUrl });
     return NextResponse.redirect(parsed);
   }
 
-  const signedUrl = await getSignedReadUrl(key);
+  const signedUrl = await getSignedReadUrl(key, resolve ? 3600 : 300);
   if (!signedUrl) {
+    if (resolve) return NextResponse.json({ url: fileUrl });
     return NextResponse.redirect(parsed);
+  }
+
+  if (resolve) {
+    return NextResponse.json({ url: signedUrl });
   }
 
   return NextResponse.redirect(signedUrl);

@@ -213,7 +213,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             create: files.map(
               (file: {
                 fileUrl: string;
-                fileType: "pdf" | "docx" | "mp4" | "audio" | "image" | "link";
+                fileType: "pdf" | "docx" | "pptx" | "xlsx" | "mp4" | "audio" | "image" | "link";
                 fileName: string;
                 fileSize?: number;
               }) => ({

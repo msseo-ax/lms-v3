@@ -63,7 +63,7 @@ interface UploadedFile {
 
 interface ContentFilePayload {
   fileUrl: string;
-  fileType: "pdf" | "docx" | "mp4" | "audio" | "image" | "link";
+  fileType: "pdf" | "docx" | "pptx" | "xlsx" | "mp4" | "audio" | "image" | "link";
   fileName: string;
   fileSize: number;
 }
@@ -72,6 +72,8 @@ const ACCEPTED_PREFIXES = ["video/", "audio/", "image/"];
 const ACCEPTED_EXACT = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/ogg",
 ];
 const MAX_FILE_SIZE = 300 * 1024 * 1024;
@@ -86,6 +88,8 @@ function isAcceptedType(mimeType: string): boolean {
 function getFileIcon(file: File) {
   if (file.type === "application/pdf") return FileText;
   if (file.type.includes("word")) return FileText;
+  if (file.type.includes("presentation")) return FileText;
+  if (file.type.includes("spreadsheet")) return FileText;
   if (file.type.startsWith("video/")) return Film;
   if (file.type.startsWith("audio/")) return Mic;
   if (file.type.startsWith("image/")) return ImageIcon;
@@ -95,15 +99,19 @@ function getFileIcon(file: File) {
 function getFileTypeLabel(file: File): string {
   if (file.type === "application/pdf") return "PDF";
   if (file.type.includes("word")) return "DOCX";
+  if (file.type.includes("presentation")) return "PPTX";
+  if (file.type.includes("spreadsheet")) return "XLSX";
   if (file.type.startsWith("video/")) return "영상";
   if (file.type.startsWith("audio/")) return "음성";
   if (file.type.startsWith("image/")) return "이미지";
   return "파일";
 }
 
-function resolveFileType(contentType: string): "pdf" | "docx" | "mp4" | "audio" | "image" {
+function resolveFileType(contentType: string): "pdf" | "docx" | "pptx" | "xlsx" | "mp4" | "audio" | "image" {
   if (contentType === "application/pdf") return "pdf";
   if (contentType.includes("word")) return "docx";
+  if (contentType.includes("presentation")) return "pptx";
+  if (contentType.includes("spreadsheet")) return "xlsx";
   if (contentType.startsWith("video/")) return "mp4";
   if (contentType.startsWith("audio/") || contentType === "application/ogg") return "audio";
   return "image";
@@ -436,14 +444,14 @@ export function ContentForm({
                   파일을 드래그하거나 클릭하여 업로드
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  PDF, DOCX, 영상, 음성, 이미지 · 파일당 최대 300MB
+                  PDF, DOCX, PPTX, XLSX, 영상, 음성, 이미지 · 파일당 최대 300MB
                 </p>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".pdf,.docx,.mp4,.webm,.mov,.mp3,.wav,.m4a,.ogg,.png,.jpg,.jpeg,.gif,.webp"
+                accept=".pdf,.docx,.pptx,.xlsx,.mp4,.webm,.mov,.mp3,.wav,.m4a,.ogg,.png,.jpg,.jpeg,.gif,.webp"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) addFiles(e.target.files);

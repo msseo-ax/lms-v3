@@ -18,6 +18,8 @@ enum Role {
 enum FileType {
   pdf
   docx
+  pptx
+  xlsx
   mp4
   audio
   image

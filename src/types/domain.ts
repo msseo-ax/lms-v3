@@ -1,5 +1,5 @@
 export type Role = "admin" | "user";
-export type FileType = "pdf" | "docx" | "mp4" | "audio" | "image" | "link";
+export type FileType = "pdf" | "docx" | "pptx" | "xlsx" | "mp4" | "audio" | "image" | "link";
 export type TargetType = "all" | "division" | "user";
 export type { ReadStatus } from "@/lib/read-status";
 

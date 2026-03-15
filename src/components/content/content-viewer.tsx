@@ -19,6 +19,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { ReadTracker } from "./read-tracker";
+import { OfficeViewer } from "./office-viewer";
 
 interface ContentViewerProps {
   content: Content;
@@ -34,6 +35,10 @@ function getFileIcon(fileType: ContentFile["fileType"]) {
       return <FileText className="h-5 w-5 text-red-500" />;
     case "docx":
       return <FileText className="h-5 w-5 text-blue-500" />;
+    case "pptx":
+      return <FileText className="h-5 w-5 text-orange-500" />;
+    case "xlsx":
+      return <FileText className="h-5 w-5 text-green-600" />;
     case "mp4":
       return <Play className="h-5 w-5 text-purple-500" />;
     case "audio":
@@ -200,6 +205,13 @@ export function ContentViewer({
                         style={{ minWidth: 0 }}
                       />
                     </div>
+                  )}
+
+                  {(file.fileType === "docx" || file.fileType === "pptx" || file.fileType === "xlsx") && (
+                    <OfficeViewer
+                      accessUrl={getAccessUrl(file.fileUrl, file.id)}
+                      fileName={file.fileName}
+                    />
                   )}
                 </div>
               ))}

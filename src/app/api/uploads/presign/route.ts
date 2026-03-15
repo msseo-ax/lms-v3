@@ -11,6 +11,8 @@ const ALLOWED_PREFIXES = ["video/", "audio/", "image/"];
 const ALLOWED_EXACT = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/ogg",
 ];
 
