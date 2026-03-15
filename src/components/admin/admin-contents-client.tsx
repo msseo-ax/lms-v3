@@ -31,6 +31,7 @@ interface AdminContentsClientProps {
 export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
   const [sortValue, setSortValue] = useState("newest");
 
   const debouncedQuery = useDebounce(searchQuery);
@@ -38,6 +39,13 @@ export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
   const categoryOptions = useMemo(() => {
     const names = Array.from(new Set(contentList.map((c) => c.categoryName)));
     return names.map((name) => ({ label: name, value: name }));
+  }, [contentList]);
+
+  const targetOptions = useMemo(() => {
+    const labels = Array.from(
+      new Set(contentList.flatMap((c) => c.targetLabels))
+    );
+    return labels.map((label) => ({ label, value: label }));
   }, [contentList]);
 
   const filtered = useMemo(() => {
@@ -50,6 +58,12 @@ export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
 
     if (selectedCategories.length > 0) {
       result = result.filter((c) => selectedCategories.includes(c.categoryName));
+    }
+
+    if (selectedTargets.length > 0) {
+      result = result.filter((c) =>
+        c.targetLabels.some((label) => selectedTargets.includes(label))
+      );
     }
 
     switch (sortValue) {
@@ -65,7 +79,7 @@ export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
     }
 
     return result;
-  }, [contentList, debouncedQuery, selectedCategories, sortValue]);
+  }, [contentList, debouncedQuery, selectedCategories, selectedTargets, sortValue]);
 
   return (
     <>
@@ -81,6 +95,12 @@ export function AdminContentsClient({ contentList }: AdminContentsClientProps) {
           options={categoryOptions}
           selected={selectedCategories}
           onChange={setSelectedCategories}
+        />
+        <FilterDropdown
+          label="대상"
+          options={targetOptions}
+          selected={selectedTargets}
+          onChange={setSelectedTargets}
         />
         <div className="ml-auto">
           <SortDropdown

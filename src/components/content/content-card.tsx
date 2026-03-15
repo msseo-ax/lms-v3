@@ -59,12 +59,6 @@ export function ContentCard({ content }: ContentCardProps) {
           {content.title}
         </h3>
 
-        {content.summary && (
-          <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            {content.summary}
-          </p>
-        )}
-
         <div className="flex-1" />
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">

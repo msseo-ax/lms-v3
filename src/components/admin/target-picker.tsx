@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Division, User, TargetType } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Search, X } from "lucide-react";
+import { Search, X, ChevronRight, ChevronDown } from "lucide-react";
 
 interface TargetPickerProps {
   divisions: Division[];
@@ -30,11 +29,24 @@ export function TargetPicker({
 }: TargetPickerProps) {
   const [mode, setMode] = useState<TargetType>(value.type);
   const [userSearch, setUserSearch] = useState("");
+  const [divisionSearch, setDivisionSearch] = useState("");
+  const [collapsedDivisions, setCollapsedDivisions] = useState<Set<string>>(new Set());
+
+  const divisionUserCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const u of users) {
+      if (u.divisionId) {
+        counts.set(u.divisionId, (counts.get(u.divisionId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [users]);
 
   function handleModeChange(newMode: TargetType) {
     setMode(newMode);
     onChange({ ...value, type: newMode });
     setUserSearch("");
+    setDivisionSearch("");
   }
 
   function toggleDivisionId(id: string) {
@@ -59,6 +71,28 @@ export function TargetPicker({
     onChange({ ...value, userIds: value.userIds.filter((item) => item !== id) });
   }
 
+  // Division mode filtering
+  const filteredDivisions = divisionSearch.trim()
+    ? divisions.filter((d) =>
+        d.name.toLowerCase().includes(divisionSearch.toLowerCase())
+      )
+    : divisions;
+
+  // Division mode: select/deselect all visible
+  function selectAllDivisions() {
+    const visibleIds = filteredDivisions.map((d) => d.id);
+    const merged = Array.from(new Set([...value.divisionIds, ...visibleIds]));
+    onChange({ ...value, divisionIds: merged });
+  }
+
+  function deselectAllDivisions() {
+    const visibleIds = new Set(filteredDivisions.map((d) => d.id));
+    onChange({ ...value, divisionIds: value.divisionIds.filter((id) => !visibleIds.has(id)) });
+  }
+
+  const allVisibleSelected = filteredDivisions.length > 0 && filteredDivisions.every((d) => value.divisionIds.includes(d.id));
+
+  // User mode filtering
   const filteredUsers = userSearch.trim()
     ? users.filter(
         (u) =>
@@ -73,6 +107,26 @@ export function TargetPicker({
 
   function isIncludedByDivision(user: User) {
     return Boolean(user.divisionId && selectedDivisionSet.has(user.divisionId));
+  }
+
+  // User mode: toggle section expand
+  function toggleSection(key: string) {
+    setCollapsedDivisions((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  const isSearching = userSearch.trim().length > 0;
+
+  function isSectionExpanded(key: string) {
+    if (isSearching) return true;
+    return !collapsedDivisions.has(key);
   }
 
   return (
@@ -92,24 +146,57 @@ export function TargetPicker({
       </div>
 
       {mode === "division" && (
-        <div className="grid grid-cols-3 gap-3 rounded-md border border-input p-3">
-          {divisions.map((div) => (
-            <label
-              key={div.id}
-              className="flex cursor-pointer items-center gap-2"
+        <div className="space-y-3 rounded-md border border-input p-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="본부/부문 검색"
+              value={divisionSearch}
+              onChange={(e) => setDivisionSearch(e.target.value)}
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={allVisibleSelected ? deselectAllDivisions : selectAllDivisions}
             >
-              <Checkbox
-                checked={value.divisionIds.includes(div.id)}
-                onCheckedChange={() => toggleDivisionId(div.id)}
-              />
-              <span className="text-sm">{div.name}</span>
-            </label>
-          ))}
+              {allVisibleSelected ? "전체 해제" : "전체 선택"}
+            </Button>
+          </div>
+
+          {filteredDivisions.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              검색 결과가 없습니다.
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {filteredDivisions.map((div) => {
+                const count = divisionUserCounts.get(div.id) ?? 0;
+                return (
+                  <label
+                    key={div.id}
+                    className="flex cursor-pointer items-center gap-2"
+                  >
+                    <Checkbox
+                      checked={value.divisionIds.includes(div.id)}
+                      onCheckedChange={() => toggleDivisionId(div.id)}
+                    />
+                    <span className="text-sm">{div.name} ({count}명)</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {mode === "user" && (
-        <div className="space-y-4 rounded-md border border-input p-3">
+        <div className="rounded-md border border-input p-3">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -120,6 +207,8 @@ export function TargetPicker({
             />
           </div>
 
+          <div className="mt-2 max-h-72 space-y-1 overflow-y-auto">
+
           {filteredUsers.length === 0 && (
             <p className="py-2 text-center text-sm text-muted-foreground">
               검색 결과가 없습니다.
@@ -129,62 +218,103 @@ export function TargetPicker({
           {divisions.map((div) => {
             const divUsers = assignedUsers.filter((u) => u.divisionId === div.id);
             if (divUsers.length === 0) return null;
+            const selectedCount = divUsers.filter(
+              (u) => value.userIds.includes(u.id) || isIncludedByDivision(u)
+            ).length;
+            const expanded = isSectionExpanded(div.id);
             return (
               <div key={div.id}>
-                <Label className="mb-1.5 block text-xs text-muted-foreground">
-                  {div.name}
-                </Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {divUsers.map((user) => {
-                    const includedByDivision = isIncludedByDivision(user);
-                    const explicitlySelected = value.userIds.includes(user.id);
-                    const checked = includedByDivision || explicitlySelected;
-                    return (
-                    <label
-                      key={user.id}
-                      className="flex cursor-pointer items-center gap-2"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        disabled={includedByDivision && !explicitlySelected}
-                        onCheckedChange={() => toggleUserId(user.id)}
-                      />
-                      <span className="text-sm">{user.name}</span>
-                    </label>
-                    );
-                  })}
-                </div>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left hover:bg-muted/50"
+                  onClick={() => toggleSection(div.id)}
+                >
+                  {expanded ? (
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {div.name} ({divUsers.length}명)
+                    {selectedCount > 0 && ` · ${selectedCount}명 선택`}
+                  </span>
+                </button>
+                {expanded && (
+                  <div className="grid grid-cols-4 gap-2 pl-5 pt-1">
+                    {divUsers.map((user) => {
+                      const includedByDivision = isIncludedByDivision(user);
+                      const explicitlySelected = value.userIds.includes(user.id);
+                      const checked = includedByDivision || explicitlySelected;
+                      return (
+                        <label
+                          key={user.id}
+                          className="flex cursor-pointer items-center gap-2"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={includedByDivision && !explicitlySelected}
+                            onCheckedChange={() => toggleUserId(user.id)}
+                          />
+                          <span className="text-sm">{user.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
 
-          {unassignedUsers.length > 0 && (
-            <div>
-              <Label className="mb-1.5 block text-xs text-muted-foreground">
-                {assignedUsers.length > 0 ? "미분류" : "전체 구성원"}
-              </Label>
-              <div className="grid grid-cols-4 gap-2">
-                {unassignedUsers.map((user) => {
-                  const includedByDivision = isIncludedByDivision(user);
-                  const explicitlySelected = value.userIds.includes(user.id);
-                  const checked = includedByDivision || explicitlySelected;
-                  return (
-                  <label
-                    key={user.id}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
-                    <Checkbox
-                      checked={checked}
-                      disabled={includedByDivision && !explicitlySelected}
-                      onCheckedChange={() => toggleUserId(user.id)}
-                    />
-                    <span className="text-sm">{user.name}</span>
-                  </label>
-                  );
-                })}
+          {unassignedUsers.length > 0 && (() => {
+            const sectionKey = "__unassigned__";
+            const selectedCount = unassignedUsers.filter(
+              (u) => value.userIds.includes(u.id) || isIncludedByDivision(u)
+            ).length;
+            const expanded = isSectionExpanded(sectionKey);
+            return (
+              <div>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left hover:bg-muted/50"
+                  onClick={() => toggleSection(sectionKey)}
+                >
+                  {expanded ? (
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {assignedUsers.length > 0 ? "미분류" : "전체 구성원"} ({unassignedUsers.length}명)
+                    {selectedCount > 0 && ` · ${selectedCount}명 선택`}
+                  </span>
+                </button>
+                {expanded && (
+                  <div className="grid grid-cols-4 gap-2 pl-5 pt-1">
+                    {unassignedUsers.map((user) => {
+                      const includedByDivision = isIncludedByDivision(user);
+                      const explicitlySelected = value.userIds.includes(user.id);
+                      const checked = includedByDivision || explicitlySelected;
+                      return (
+                        <label
+                          key={user.id}
+                          className="flex cursor-pointer items-center gap-2"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={includedByDivision && !explicitlySelected}
+                            onCheckedChange={() => toggleUserId(user.id)}
+                          />
+                          <span className="text-sm">{user.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
+
+          </div>
         </div>
       )}
 

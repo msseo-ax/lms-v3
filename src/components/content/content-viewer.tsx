@@ -97,16 +97,6 @@ export function ContentViewer({
 
       <Separator />
 
-      {content.summary && (
-        <Card className="my-6 border-slate-200 bg-slate-50/60">
-          <CardContent className="p-4">
-            <p className="text-sm text-slate-700 leading-relaxed">
-              {content.summary}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       {content.body && (
         <div
           className="my-6 text-base leading-7 text-slate-800 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_li]:mb-1 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4 [&_a]:text-blue-600 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600 [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_pre]:bg-slate-100 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-4"

@@ -46,7 +46,6 @@ export default async function AdminContentEditPage({
           title: content.title,
           categoryId: content.categoryId,
           body: content.body ?? "",
-          summary: content.summary ?? "",
           targets,
         }}
       />
@@ -79,7 +78,6 @@ export default async function AdminContentEditPage({
         title: content.title,
         categoryId: content.categoryId,
         body: content.body ?? "",
-        summary: content.summary ?? "",
         targets: content.targets
           .filter((item) => isValidTargetType(item.targetType))
           .map((item) => ({

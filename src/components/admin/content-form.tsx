@@ -7,7 +7,6 @@ import type { Category, Division, User, TargetType } from "@/types/domain";
 import { cn, formatFileSize } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -53,7 +52,6 @@ interface ContentFormProps {
     title: string;
     categoryId: string;
     body: string;
-    summary: string;
     targets: { targetType: TargetType; targetId: string | null }[];
   };
 }
@@ -162,7 +160,6 @@ export function ContentForm({
     deriveInitialTarget(initialValues?.targets)
   );
   const [body, setBody] = useState(initialValues?.body ?? "");
-  const [summary, setSummary] = useState(initialValues?.summary ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [links, setLinks] = useState<string[]>([]);
@@ -316,7 +313,6 @@ export function ContentForm({
           title,
           categoryId,
           body,
-          summary,
           targets,
           ...(shouldSendFiles
             ? {
@@ -411,20 +407,8 @@ export function ContentForm({
           <Separator />
 
           <div className="space-y-2">
-            <Label>본문</Label>
+            <Label>콘텐츠 설명</Label>
             <RichEditor value={body} onChange={setBody} />
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label>요약</Label>
-            <Textarea
-              placeholder="요약 내용을 입력하세요..."
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              rows={4}
-            />
           </div>
 
           <Separator />
