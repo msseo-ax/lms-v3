@@ -7,15 +7,19 @@ import { getS3Client, s3Bucket, getPublicFileUrl } from "@/lib/s3";
 
 const MAX_FILE_SIZE = 300 * 1024 * 1024;
 
-const ALLOWED_TYPES = [
+const ALLOWED_PREFIXES = ["video/", "audio/", "image/"];
+const ALLOWED_EXACT = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "video/mp4",
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
+  "application/ogg",
 ];
+
+function isAllowedType(mimeType: string): boolean {
+  return (
+    ALLOWED_PREFIXES.some((prefix) => mimeType.startsWith(prefix)) ||
+    ALLOWED_EXACT.includes(mimeType)
+  );
+}
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -32,7 +36,7 @@ export async function POST(request: NextRequest) {
     return badRequest("File size exceeds 300MB limit");
   }
 
-  if (!ALLOWED_TYPES.includes(contentType)) {
+  if (!isAllowedType(contentType)) {
     return badRequest("File type not allowed");
   }
 

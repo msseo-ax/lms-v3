@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   FileText,
   Play,
+  Mic,
   Image as ImageIcon,
   ExternalLink,
   Download,
@@ -35,6 +36,8 @@ function getFileIcon(fileType: ContentFile["fileType"]) {
       return <FileText className="h-5 w-5 text-blue-500" />;
     case "mp4":
       return <Play className="h-5 w-5 text-purple-500" />;
+    case "audio":
+      return <Mic className="h-5 w-5 text-orange-500" />;
     case "image":
       return <ImageIcon className="h-5 w-5 text-green-500" />;
     case "link":
@@ -190,6 +193,16 @@ export function ContentViewer({
                       >
                         <track kind="captions" />
                       </video>
+                    </div>
+                  )}
+
+                  {file.fileType === "audio" && (
+                    <div className="mt-2 rounded-lg border p-3">
+                      <audio
+                        src={getAccessUrl(file.fileUrl)}
+                        controls
+                        className="w-full"
+                      />
                     </div>
                   )}
                 </div>

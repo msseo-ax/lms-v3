@@ -19,6 +19,7 @@ enum FileType {
   pdf
   docx
   mp4
+  audio
   image
   link
 }

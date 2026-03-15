@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return badRequest("Invalid file item");
       }
 
-      if (!["pdf", "docx", "mp4", "image", "link"].includes(file.fileType as string)) {
+      if (!["pdf", "docx", "mp4", "audio", "image", "link"].includes(file.fileType as string)) {
         return badRequest("Invalid file type");
       }
 
@@ -210,7 +210,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             create: files.map(
               (file: {
                 fileUrl: string;
-                fileType: "pdf" | "docx" | "mp4" | "image" | "link";
+                fileType: "pdf" | "docx" | "mp4" | "audio" | "image" | "link";
                 fileName: string;
                 fileSize?: number;
               }) => ({
