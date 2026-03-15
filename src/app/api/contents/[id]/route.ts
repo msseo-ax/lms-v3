@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { badRequest, notFound, ok, unauthorized } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
+import { computeMinDuration } from "@/lib/read-status";
 import {
   contents,
   contentFiles,
@@ -115,6 +116,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       body: contentBody ?? null,
       summary: summary ?? null,
       updatedAt: new Date().toISOString(),
+      minDurationSeconds: computeMinDuration(contentBody),
+      requireFileAccess: Array.isArray(files) && files.length > 0,
     };
 
     contents[contentIndex] = updated;
@@ -231,6 +234,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         categoryId,
         body: contentBody ?? null,
         summary: summary ?? null,
+        minDurationSeconds: computeMinDuration(contentBody),
+        requireFileAccess: Array.isArray(files) && files.length > 0,
         ...targetData,
         ...fileData,
       },

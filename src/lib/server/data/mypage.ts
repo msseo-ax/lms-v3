@@ -5,13 +5,25 @@ import {
   divisions,
   getMockCurrentUser,
   getTargetLabels,
-  isContentRead,
+  getContentReadStatus,
   isContentTargetedForUser,
   readLogs,
 } from "@/lib/mock-db";
 import { getCurrentUserFromMiddlewareHeader } from "@/lib/auth";
 import { getTargetLabels as getTargetLabelsFromData } from "@/lib/targeting";
+import { computeReadStatus, type ReadStatus } from "@/lib/read-status";
 import { cache } from "react";
+
+interface IncompleteContent {
+  id: string;
+  title: string;
+  categoryId: string;
+  summary: string | null;
+  createdAt: string;
+  targetLabels: string[];
+  fileCount: number;
+  readStatus: ReadStatus;
+}
 
 export interface MyPageData {
   currentUser: {
@@ -23,16 +35,9 @@ export interface MyPageData {
     divisionName?: string;
   };
   targetedContents: Array<{ id: string }>;
-  readContents: Array<{ id: string }>;
-  unreadContents: Array<{
-    id: string;
-    title: string;
-    categoryId: string;
-    summary: string | null;
-    createdAt: string;
-    targetLabels: string[];
-    fileCount: number;
-  }>;
+  completedContents: Array<{ id: string }>;
+  readingContents: Array<{ id: string }>;
+  incompleteContents: IncompleteContent[];
   categories: Array<{ id: string; name: string }>;
   userReadLogsCount: number;
 }
@@ -49,9 +54,15 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
     const division = divisions.find((item) => item.id === currentUser.divisionId);
 
     const targetedContents = contents.filter((content) => isContentTargetedForUser(content.id, currentUser));
-    const readContents = targetedContents.filter((content) => isContentRead(content.id, currentUser.id));
-    const unreadContents = targetedContents
-      .filter((content) => !isContentRead(content.id, currentUser.id))
+    const contentsWithStatus = targetedContents.map((content) => ({
+      ...content,
+      readStatus: getContentReadStatus(content.id, currentUser.id),
+      fileCount: contentFiles.filter((file) => file.contentId === content.id).length,
+    }));
+    const completedContents = contentsWithStatus.filter((c) => c.readStatus === "completed");
+    const readingContents = contentsWithStatus.filter((c) => c.readStatus === "reading");
+    const incompleteContents: IncompleteContent[] = contentsWithStatus
+      .filter((c) => c.readStatus !== "completed")
       .map((content) => ({
         id: content.id,
         title: content.title,
@@ -59,7 +70,8 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
         summary: content.summary,
         createdAt: content.createdAt,
         targetLabels: getTargetLabels(content.id),
-        fileCount: contentFiles.filter((file) => file.contentId === content.id).length,
+        fileCount: content.fileCount,
+        readStatus: content.readStatus,
       }));
 
     return {
@@ -72,8 +84,9 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
         divisionName: division?.name,
       },
       targetedContents: targetedContents.map((content) => ({ id: content.id })),
-      readContents: readContents.map((content) => ({ id: content.id })),
-      unreadContents,
+      completedContents: completedContents.map((content) => ({ id: content.id })),
+      readingContents: readingContents.map((content) => ({ id: content.id })),
+      incompleteContents,
       categories: categories.map((category) => ({ id: category.id, name: category.name })),
       userReadLogsCount: readLogs.filter((log) => log.userId === currentUser.id).length,
     };
@@ -146,7 +159,7 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
         files: true,
         readLogs: {
           where: { userId: currentUserId },
-          select: { userId: true },
+          select: { userId: true, durationSeconds: true },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -183,10 +196,40 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
       : Promise.resolve([]),
   ]);
 
-  const readContents = targetedContents.filter((content) => content.readLogs.length > 0);
+  // Batch FileAccessLog check
+  const contentIdsRequiringFileAccess = targetedContents
+    .filter((c) => c.requireFileAccess)
+    .map((c) => c.id);
 
-  const unreadContents = targetedContents
-    .filter((content) => content.readLogs.length === 0)
+  const fileAccessSet = new Set<string>();
+  if (contentIdsRequiringFileAccess.length > 0) {
+    const accessLogs = await prisma.fileAccessLog.findMany({
+      where: {
+        userId: currentUserId,
+        contentFile: { contentId: { in: contentIdsRequiringFileAccess } },
+      },
+      select: { contentFile: { select: { contentId: true } } },
+      distinct: ["contentFileId"],
+    });
+    accessLogs.forEach((fa) => fileAccessSet.add(fa.contentFile.contentId));
+  }
+
+  const contentsWithStatus = targetedContents.map((content) => {
+    const readLog = content.readLogs[0];
+    const status = computeReadStatus({
+      hasReadLog: content.readLogs.length > 0,
+      durationSeconds: readLog?.durationSeconds ?? 0,
+      minDurationSeconds: content.minDurationSeconds,
+      requireFileAccess: content.requireFileAccess,
+      hasFileAccess: fileAccessSet.has(content.id),
+    });
+    return { ...content, readStatus: status };
+  });
+
+  const completedContents = contentsWithStatus.filter((c) => c.readStatus === "completed");
+  const readingContents = contentsWithStatus.filter((c) => c.readStatus === "reading");
+  const incompleteContents: IncompleteContent[] = contentsWithStatus
+    .filter((c) => c.readStatus !== "completed")
     .map((content) => ({
       id: content.id,
       title: content.title,
@@ -195,6 +238,7 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
       createdAt: content.createdAt.toISOString(),
       targetLabels: getTargetLabelsFromData(content.targets, dbDivisions, dbUsers),
       fileCount: content.files.length,
+      readStatus: content.readStatus,
     }));
 
   return {
@@ -207,8 +251,9 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
       divisionName: pageUser.divisionName,
     },
     targetedContents: targetedContents.map((content) => ({ id: content.id })),
-    readContents: readContents.map((content) => ({ id: content.id })),
-    unreadContents,
+    completedContents: completedContents.map((content) => ({ id: content.id })),
+    readingContents: readingContents.map((content) => ({ id: content.id })),
+    incompleteContents,
     categories: dbCategories,
     userReadLogsCount,
   };

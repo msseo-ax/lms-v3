@@ -82,10 +82,11 @@ export default async function AdminDashboardPage() {
                 title={contentRow.title}
                 categoryName={contentRow.categoryName}
                 readRate={contentRow.readRate}
-                readCount={contentRow.readCount}
+                completedCount={contentRow.completedCount}
+                readingCount={contentRow.readingCount}
                 totalCount={contentRow.totalCount}
                 targetLabels={contentRow.targetLabels}
-                unreadUsers={contentRow.unreadUsers}
+                incompleteUsers={contentRow.incompleteUsers}
               />
             ))}
           </div>

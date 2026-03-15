@@ -1,6 +1,7 @@
 export type Role = "admin" | "user";
 export type FileType = "pdf" | "docx" | "mp4" | "audio" | "image" | "link";
 export type TargetType = "all" | "division" | "user";
+export type { ReadStatus } from "@/lib/read-status";
 
 export interface Division {
   id: string;
@@ -50,6 +51,8 @@ export interface Content {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  minDurationSeconds?: number;
+  requireFileAccess?: boolean;
   category?: Category;
   author?: User;
   files?: ContentFile[];
@@ -57,7 +60,7 @@ export interface Content {
 }
 
 export interface ContentWithMeta extends Content {
-  isRead: boolean;
+  readStatus: import("@/lib/read-status").ReadStatus;
   isTargeted: boolean;
   readRate?: number;
   fileCount: number;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   BookOpen,
+  BookOpenCheck,
   Eye,
   EyeOff,
   FileText,
@@ -16,7 +17,7 @@ export default async function MyPage() {
   const data = await getMyPageData();
   if (!data) return null;
 
-  const { currentUser, targetedContents, readContents, unreadContents, userReadLogsCount } = data;
+  const { currentUser, targetedContents, completedContents, readingContents, incompleteContents, userReadLogsCount } = data;
 
   const statCards = [
     {
@@ -27,13 +28,19 @@ export default async function MyPage() {
     },
     {
       label: "열람 완료",
-      value: readContents.length,
-      icon: Eye,
+      value: completedContents.length,
+      icon: BookOpenCheck,
       color: "text-emerald-600",
     },
     {
+      label: "열람중",
+      value: readingContents.length,
+      icon: Eye,
+      color: "text-orange-600",
+    },
+    {
       label: "미열람",
-      value: unreadContents.length,
+      value: incompleteContents.filter((c) => c.readStatus === "unread").length,
       icon: EyeOff,
       color: "text-red-500",
     },
@@ -71,7 +78,7 @@ export default async function MyPage() {
 
       <Separator />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -87,17 +94,17 @@ export default async function MyPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">미열람 콘텐츠</h2>
-        {unreadContents.length === 0 ? (
+        <h2 className="text-lg font-semibold mb-3">미완료 콘텐츠</h2>
+        {incompleteContents.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
               <Eye className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
-              <p>모든 콘텐츠를 열람했습니다!</p>
+              <p>모든 콘텐츠를 열람 완료했습니다!</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {unreadContents.map((content) => {
+            {incompleteContents.map((content) => {
               const category = data.categories.find((item) => item.id === content.categoryId);
               return (
                 <Link key={content.id} href={`/contents/${content.id}`}>
@@ -132,9 +139,17 @@ export default async function MyPage() {
                             </p>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {formatDate(content.createdAt)}
-                        </span>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(content.createdAt)}
+                          </span>
+                          <span className={cn(
+                            "text-[11px] font-medium",
+                            content.readStatus === "reading" ? "text-orange-600" : "text-red-500"
+                          )}>
+                            {content.readStatus === "reading" ? "열람중" : "미열람"}
+                          </span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

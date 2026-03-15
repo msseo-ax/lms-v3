@@ -5,6 +5,7 @@ import {
   getContentReadRate,
   getTargetLabels,
 } from "@/lib/mock-db";
+import { computeReadStatus } from "@/lib/read-status";
 import { cache } from "react";
 
 interface TargetShape {
@@ -122,11 +123,14 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
   }
 
   const contentIds = dbContents.map((content) => content.id);
-  const [readCounts, allUsersForTargetCount] = await Promise.all([
-    db.readLog.groupBy({
-      by: ["contentId"],
+  const [dbReadLogs, dbFileAccessLogs, allUsersForTargetCount] = await Promise.all([
+    db.readLog.findMany({
       where: { contentId: { in: contentIds } },
-      _count: { userId: true },
+      select: { contentId: true, userId: true, durationSeconds: true },
+    }),
+    db.fileAccessLog.findMany({
+      where: { contentFile: { contentId: { in: contentIds } } },
+      select: { userId: true, contentFile: { select: { contentId: true } } },
     }),
     db.user.findMany({
       select: {
@@ -137,7 +141,20 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
     }),
   ]);
 
-  const readCountMap = new Map(readCounts.map((item) => [item.contentId, item._count.userId]));
+  // ReadLog: contentId -> userId -> durationSeconds
+  const readLogMap = new Map<string, Map<string, number>>();
+  dbReadLogs.forEach((log) => {
+    if (!readLogMap.has(log.contentId)) readLogMap.set(log.contentId, new Map());
+    readLogMap.get(log.contentId)!.set(log.userId, log.durationSeconds);
+  });
+
+  // FileAccessLog: contentId -> Set<userId>
+  const fileAccessMap = new Map<string, Set<string>>();
+  dbFileAccessLogs.forEach((fa) => {
+    const cid = fa.contentFile.contentId;
+    if (!fileAccessMap.has(cid)) fileAccessMap.set(cid, new Set());
+    fileAccessMap.get(cid)!.add(fa.userId);
+  });
   const totalUserCount = allUsersForTargetCount.length;
   const allUserIds = new Set<string>();
   const divisionUserIdsMap = new Map<string, Set<string>>();
@@ -199,9 +216,45 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
   );
 
   return dbContents.map((content, index) => {
-    const readCount = readCountMap.get(content.id) ?? 0;
     const targetCount = targetCounts[index] ?? 0;
-    const readRate = targetCount > 0 ? Math.round((readCount / targetCount) * 100) : 0;
+    const userReadLogs = readLogMap.get(content.id) ?? new Map<string, number>();
+    const userFileAccess = fileAccessMap.get(content.id) ?? new Set<string>();
+
+    // Count completed users among all target users
+    let completedCount = 0;
+    // We need actual target user IDs to check per-user status
+    const allUserTargetIds = new Set<string>();
+    const isAllTarget = content.targets.some((t) => t.targetType === "all");
+
+    if (isAllTarget) {
+      allUsersForTargetCount.forEach((u) => allUserTargetIds.add(u.id));
+    } else {
+      for (const target of content.targets) {
+        if (!target.targetId) continue;
+        if (target.targetType === "division") {
+          const divUsers = divisionUserIdsMap.get(target.targetId);
+          if (divUsers) divUsers.forEach((uid) => allUserTargetIds.add(uid));
+        } else if (target.targetType === "team") {
+          const teamUsers = teamUserIdsMap.get(target.targetId);
+          if (teamUsers) teamUsers.forEach((uid) => allUserTargetIds.add(uid));
+        } else if (target.targetType === "user") {
+          if (allUserIds.has(target.targetId)) allUserTargetIds.add(target.targetId);
+        }
+      }
+    }
+
+    for (const uid of Array.from(allUserTargetIds)) {
+      const status = computeReadStatus({
+        hasReadLog: userReadLogs.has(uid),
+        durationSeconds: userReadLogs.get(uid) ?? 0,
+        minDurationSeconds: content.minDurationSeconds,
+        requireFileAccess: content.requireFileAccess,
+        hasFileAccess: userFileAccess.has(uid),
+      });
+      if (status === "completed") completedCount++;
+    }
+
+    const readRate = targetCount > 0 ? Math.round((completedCount / targetCount) * 100) : 0;
 
     return {
       id: content.id,

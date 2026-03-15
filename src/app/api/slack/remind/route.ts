@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { ok, badRequest, unauthorized } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
-import { contents, users, readLogs, contentTargets } from "@/lib/mock-db";
+import { contents, users, contentTargets, getContentReadStatus } from "@/lib/mock-db";
 import { getTargetUserIds } from "@/lib/targeting";
 import { sendSlackDmBulk } from "@/lib/slack";
+import { computeReadStatus } from "@/lib/read-status";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -12,20 +13,17 @@ function isUuid(value: string) {
   return UUID_RE.test(value);
 }
 
-interface UnreadUser {
+interface IncompleteUser {
   name: string;
   slackUserId: string | null;
 }
 
-function getUnreadUsersForMock(contentId: string): UnreadUser[] {
+function getIncompleteUsersForMock(contentId: string): IncompleteUser[] {
   const targets = contentTargets.filter((target) => target.contentId === contentId);
   const targetUserIds = getTargetUserIds(targets, users);
-  const readUserIds = new Set(
-    readLogs.filter((log) => log.contentId === contentId).map((log) => log.userId)
-  );
 
   return targetUserIds
-    .filter((userId) => !readUserIds.has(userId))
+    .filter((userId) => getContentReadStatus(contentId, userId) !== "completed")
     .map((userId) => {
       const user = users.find((u) => u.id === userId);
       return { name: user?.name ?? "", slackUserId: null };
@@ -45,40 +43,55 @@ export async function POST(request: NextRequest) {
   const isMockMode = process.env.USE_MOCK_DB === "true";
 
   let contentTitle = "";
-  let unreadUsers: UnreadUser[] = [];
+  let incompleteUsers: IncompleteUser[] = [];
 
   if (isMockMode) {
     const content = contents.find((item) => item.id === contentId);
     if (!content) return badRequest("Content not found");
 
     contentTitle = content.title;
-    unreadUsers = getUnreadUsersForMock(contentId);
+    incompleteUsers = getIncompleteUsersForMock(contentId);
   } else {
     if (!isUuid(contentId)) return badRequest("Invalid content id");
 
     const { prisma } = await import("@/lib/prisma");
     if (!prisma) return badRequest("Database is not configured");
 
-    const [content, dbTargets, dbUsers, dbReadLogs] = await Promise.all([
+    const [content, dbTargets, dbUsers, dbReadLogs, dbFileAccessLogs] = await Promise.all([
       prisma.content.findUnique({
         where: { id: contentId },
-        select: { id: true, title: true },
+        select: { id: true, title: true, minDurationSeconds: true, requireFileAccess: true },
       }),
       prisma.contentTarget.findMany({ where: { contentId } }),
       prisma.user.findMany({
         select: { id: true, name: true, divisionId: true, teamId: true, slackUserId: true },
       }),
-      prisma.readLog.findMany({ where: { contentId }, select: { userId: true } }),
+      prisma.readLog.findMany({ where: { contentId }, select: { userId: true, durationSeconds: true } }),
+      prisma.fileAccessLog.findMany({
+        where: { contentFile: { contentId } },
+        select: { userId: true },
+      }),
     ]);
 
     if (!content) return badRequest("Content not found");
 
     const targetUserIds = getTargetUserIds(dbTargets, dbUsers);
-    const readUserIds = new Set(dbReadLogs.map((log) => log.userId));
-    const unreadUserIds = targetUserIds.filter((id) => !readUserIds.has(id));
+    const readLogMap = new Map(dbReadLogs.map((log) => [log.userId, log.durationSeconds]));
+    const fileAccessUserIds = new Set(dbFileAccessLogs.map((fa) => fa.userId));
+
+    const incompleteUserIds = targetUserIds.filter((id) => {
+      const status = computeReadStatus({
+        hasReadLog: readLogMap.has(id),
+        durationSeconds: readLogMap.get(id) ?? 0,
+        minDurationSeconds: content.minDurationSeconds,
+        requireFileAccess: content.requireFileAccess,
+        hasFileAccess: fileAccessUserIds.has(id),
+      });
+      return status !== "completed";
+    });
 
     contentTitle = content.title;
-    unreadUsers = unreadUserIds
+    incompleteUsers = incompleteUserIds
       .map((id) => {
         const dbUser = dbUsers.find((u) => u.id === id);
         return { name: dbUser?.name ?? "", slackUserId: dbUser?.slackUserId ?? null };
@@ -86,15 +99,15 @@ export async function POST(request: NextRequest) {
       .filter((u) => u.name);
   }
 
-  if (unreadUsers.length === 0) {
-    return ok({ sent: false, message: "모든 대상자가 이미 열람했습니다." });
+  if (incompleteUsers.length === 0) {
+    return ok({ sent: false, message: "모든 대상자가 열람을 완료했습니다." });
   }
 
-  const unreadNames = unreadUsers.map((u) => u.name);
+  const unreadNames = incompleteUsers.map((u) => u.name);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
 
   // 개인 DM 전송
-  const dmTargets = unreadUsers
+  const dmTargets = incompleteUsers
     .filter((u) => u.slackUserId)
     .map((u) => ({
       slackUserId: u.slackUserId!,

@@ -15,8 +15,9 @@ interface FeedFiltersProps {
 }
 
 const READ_STATUS_OPTIONS = [
-  { label: "읽음", value: "read" },
-  { label: "미읽음", value: "unread" },
+  { label: "열람완료", value: "completed" },
+  { label: "열람중", value: "reading" },
+  { label: "미열람", value: "unread" },
 ];
 
 const SORT_OPTIONS = [
@@ -49,9 +50,8 @@ export function FeedFilters({ contents, categories }: FeedFiltersProps) {
       result = result.filter((c) => selectedCategories.includes(c.categoryId));
     }
 
-    if (selectedReadStatus.length === 1) {
-      const isRead = selectedReadStatus[0] === "read";
-      result = result.filter((c) => c.isRead === isRead);
+    if (selectedReadStatus.length > 0) {
+      result = result.filter((c) => selectedReadStatus.includes(c.readStatus));
     }
 
     if (sortValue === "oldest") {

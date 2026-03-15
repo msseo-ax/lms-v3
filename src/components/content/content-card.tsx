@@ -84,18 +84,28 @@ export function ContentCard({ content }: ContentCardProps) {
             <span
               className={cn(
                 "inline-block h-2 w-2 rounded-full",
-                content.isRead ? "bg-emerald-500" : "bg-red-500"
+                content.readStatus === "completed"
+                  ? "bg-emerald-500"
+                  : content.readStatus === "reading"
+                    ? "bg-orange-500"
+                    : "bg-red-500"
               )}
             />
             <span
               className={cn(
                 "text-[11px] font-medium",
-                content.isRead
+                content.readStatus === "completed"
                   ? "text-emerald-600"
-                  : "text-red-500"
+                  : content.readStatus === "reading"
+                    ? "text-orange-600"
+                    : "text-red-500"
               )}
             >
-              {content.isRead ? "읽음" : "미읽음"}
+              {content.readStatus === "completed"
+                ? "열람완료"
+                : content.readStatus === "reading"
+                  ? "열람중"
+                  : "미열람"}
             </span>
           </span>
         </div>

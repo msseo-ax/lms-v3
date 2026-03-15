@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { contents, contentFiles, contentTargets, categories, getTargetLabels, getContentReadRate, readLogs } from "@/lib/mock-db";
 import { getTargetUserIds } from "@/lib/targeting";
 import { sendSlackDmBulk } from "@/lib/slack";
+import { computeMinDuration } from "@/lib/read-status";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -154,6 +155,8 @@ export async function POST(request: NextRequest) {
       createdBy: user.id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      minDurationSeconds: computeMinDuration(contentBody),
+      requireFileAccess: Array.isArray(files) && files.length > 0,
     };
     contents.push(newContent);
 
@@ -218,6 +221,8 @@ export async function POST(request: NextRequest) {
         summary,
         categoryId,
         createdBy: user.id,
+        minDurationSeconds: computeMinDuration(contentBody),
+        requireFileAccess: Array.isArray(files) && files.length > 0,
         targets: {
           create: targets?.map((t: { targetType: string; targetId?: string }) => ({
             targetType: t.targetType as "all" | "division" | "user",

@@ -14,10 +14,11 @@ interface ReadStatusCardProps {
   title: string;
   categoryName: string;
   readRate: number;
-  readCount: number;
+  completedCount: number;
+  readingCount: number;
   totalCount: number;
   targetLabels: string[];
-  unreadUsers: User[];
+  incompleteUsers: User[];
 }
 
 export function ReadStatusCard({
@@ -25,15 +26,16 @@ export function ReadStatusCard({
   title,
   categoryName,
   readRate,
-  readCount,
+  completedCount,
+  readingCount,
   totalCount,
   targetLabels,
-  unreadUsers,
+  incompleteUsers,
 }: ReadStatusCardProps) {
   const [isSending, setIsSending] = useState(false);
 
   async function handleSendReminder() {
-    if (unreadUsers.length === 0 || isSending) {
+    if (incompleteUsers.length === 0 || isSending) {
       return;
     }
 
@@ -99,16 +101,16 @@ export function ReadStatusCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
-            {readCount}명 읽음
+            {completedCount}명 완료{readingCount > 0 && ` · ${readingCount}명 열람중`}
           </span>
           <span>{totalCount}명 대상</span>
         </div>
-        {unreadUsers.length > 0 && (
+        {incompleteUsers.length > 0 && (
           <details className="group">
             <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-between gap-2 select-none">
               <span className="inline-flex items-center gap-1">
                 <EyeOff className="h-3 w-3" />
-                미열람 {unreadUsers.length}명 보기
+                미완료 {incompleteUsers.length}명 보기
               </span>
               <Button
                 type="button"
@@ -126,7 +128,7 @@ export function ReadStatusCard({
               </Button>
             </summary>
             <div className="mt-2 space-y-1 pl-4 border-l-2 border-muted">
-              {unreadUsers.map((u) => (
+              {incompleteUsers.map((u) => (
                 <div key={u.id} className="text-xs text-muted-foreground">
                   {u.name}
                   <span className="text-muted-foreground/60 ml-1">

@@ -3,11 +3,12 @@ import {
   contentTargets,
   contents,
   getContentReadRate,
+  getContentReadStatus,
   getTargetLabels,
-  readLogs,
   users,
 } from "@/lib/mock-db";
 import { getTargetLabels as getTargetLabelsFromData, getTargetUserIds } from "@/lib/targeting";
+import { computeReadStatus } from "@/lib/read-status";
 import type { User } from "@/types/domain";
 import { cache } from "react";
 
@@ -29,9 +30,10 @@ export interface AdminDashboardContentRow {
   readRate: number;
   targetLabels: string[];
   categoryName: string;
-  readCount: number;
+  completedCount: number;
+  readingCount: number;
   totalCount: number;
-  unreadUsers: User[];
+  incompleteUsers: User[];
 }
 
 export interface AdminDashboardData {
@@ -50,13 +52,29 @@ async function getAdminDashboardDataInternal(): Promise<AdminDashboardData | nul
     const unreadAlerts = readRates.filter((rate) => rate < 50).length;
 
     const contentData = contents.map((content) => {
-      const readRate = getContentReadRate(content.id);
       const targetLabels = getTargetLabels(content.id);
       const category = categories.find((categoryItem) => categoryItem.id === content.categoryId);
       const targetUserIds = getTargetUserIdsFromMock(content.id);
-      const readUserIds = readLogs.filter((log) => log.contentId === content.id).map((log) => log.userId);
-      const unreadUserIds = targetUserIds.filter((id) => !readUserIds.includes(id));
-      const unreadUsers = users.filter((user) => unreadUserIds.includes(user.id));
+
+      // Compute per-user read status
+      let completedCount = 0;
+      let readingCount = 0;
+      const incompleteUserIds: string[] = [];
+
+      for (const uid of targetUserIds) {
+        const status = getContentReadStatus(content.id, uid);
+        if (status === "completed") {
+          completedCount++;
+        } else {
+          incompleteUserIds.push(uid);
+          if (status === "reading") readingCount++;
+        }
+      }
+
+      const incompleteUsers = users.filter((user) => incompleteUserIds.includes(user.id));
+      const readRate = targetUserIds.length > 0
+        ? Math.round((completedCount / targetUserIds.length) * 100)
+        : 0;
 
       return {
         id: content.id,
@@ -64,9 +82,10 @@ async function getAdminDashboardDataInternal(): Promise<AdminDashboardData | nul
         readRate,
         targetLabels,
         categoryName: category?.name ?? "미분류",
-        readCount: targetUserIds.length - unreadUserIds.length,
+        completedCount,
+        readingCount,
         totalCount: targetUserIds.length,
-        unreadUsers,
+        incompleteUsers,
       };
     });
 
@@ -103,27 +122,30 @@ async function getAdminDashboardDataInternal(): Promise<AdminDashboardData | nul
   ]);
 
   const contentIds = dbContents.map((content) => content.id);
-  const [readCounts, dbReadLogs] = await Promise.all([
-    prisma.readLog.groupBy({
-      by: ["contentId"],
-      where: { contentId: { in: contentIds } },
-      _count: { userId: true },
-    }),
+  const [dbReadLogs, dbFileAccessLogs] = await Promise.all([
     prisma.readLog.findMany({
       where: { contentId: { in: contentIds } },
-      select: { contentId: true, userId: true },
+      select: { contentId: true, userId: true, durationSeconds: true },
+    }),
+    prisma.fileAccessLog.findMany({
+      where: { contentFile: { contentId: { in: contentIds } } },
+      select: { userId: true, contentFile: { select: { contentId: true } } },
     }),
   ]);
-  const readCountMap = new Map(readCounts.map((item) => [item.contentId, item._count.userId]));
-  const readLogMap = new Map<string, Set<string>>();
 
+  // ReadLog: contentId -> userId -> durationSeconds
+  const readLogMap = new Map<string, Map<string, number>>();
   dbReadLogs.forEach((log) => {
-    const current = readLogMap.get(log.contentId);
-    if (current) {
-      current.add(log.userId);
-      return;
-    }
-    readLogMap.set(log.contentId, new Set([log.userId]));
+    if (!readLogMap.has(log.contentId)) readLogMap.set(log.contentId, new Map());
+    readLogMap.get(log.contentId)!.set(log.userId, log.durationSeconds);
+  });
+
+  // FileAccessLog: contentId -> Set<userId>
+  const fileAccessMap = new Map<string, Set<string>>();
+  dbFileAccessLogs.forEach((fa) => {
+    const cid = fa.contentFile.contentId;
+    if (!fileAccessMap.has(cid)) fileAccessMap.set(cid, new Set());
+    fileAccessMap.get(cid)!.add(fa.userId);
   });
 
   const divisionIds = new Set<string>();
@@ -149,21 +171,42 @@ async function getAdminDashboardDataInternal(): Promise<AdminDashboardData | nul
 
   const contentData: AdminDashboardContentRow[] = dbContents.map((content) => {
     const targetUserIds = getTargetUserIds(content.targets, dbUsers);
-    const readUserIds = readLogMap.get(content.id) ?? new Set<string>();
-    const unreadUsers = dbUsers
-      .filter((user) => targetUserIds.includes(user.id) && !readUserIds.has(user.id));
-    const readCount = readCountMap.get(content.id) ?? 0;
+    const userReadLogs = readLogMap.get(content.id) ?? new Map<string, number>();
+    const userFileAccess = fileAccessMap.get(content.id) ?? new Set<string>();
     const totalCount = targetUserIds.length;
+
+    let completedCount = 0;
+    let readingCount = 0;
+    const incompleteUserIds: string[] = [];
+
+    for (const uid of targetUserIds) {
+      const status = computeReadStatus({
+        hasReadLog: userReadLogs.has(uid),
+        durationSeconds: userReadLogs.get(uid) ?? 0,
+        minDurationSeconds: content.minDurationSeconds,
+        requireFileAccess: content.requireFileAccess,
+        hasFileAccess: userFileAccess.has(uid),
+      });
+      if (status === "completed") {
+        completedCount++;
+      } else {
+        incompleteUserIds.push(uid);
+        if (status === "reading") readingCount++;
+      }
+    }
+
+    const incompleteUsers = dbUsers.filter((user) => incompleteUserIds.includes(user.id));
 
     return {
       id: content.id,
       title: content.title,
-      readRate: totalCount > 0 ? Math.round((readCount / totalCount) * 100) : 0,
+      readRate: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
       targetLabels: getTargetLabelsFromData(content.targets, dbDivisions, labelUsers),
       categoryName: content.category?.name ?? "미분류",
-      readCount,
+      completedCount,
+      readingCount,
       totalCount,
-      unreadUsers,
+      incompleteUsers,
     };
   });
 

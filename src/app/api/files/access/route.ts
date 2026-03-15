@@ -39,8 +39,26 @@ function extractS3Key(fileUrl: string, parsed: URL): string | null {
   return key ? decodeURIComponent(key) : null;
 }
 
+async function recordFileAccess(userId: string, contentFileId: string) {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    if (!prisma) return;
+    await prisma.fileAccessLog.create({
+      data: { contentFileId, userId },
+    });
+  } catch {
+    // duplicate or missing FK — ignore
+  }
+}
+
 export async function GET(request: NextRequest) {
-  await getCurrentUser();
+  const user = await getCurrentUser();
+
+  const contentFileId = request.nextUrl.searchParams.get("contentFileId");
+  if (user && contentFileId) {
+    // fire-and-forget
+    recordFileAccess(user.id, contentFileId).catch(() => {});
+  }
 
   const fileUrl = request.nextUrl.searchParams.get("fileUrl");
   if (!fileUrl) {

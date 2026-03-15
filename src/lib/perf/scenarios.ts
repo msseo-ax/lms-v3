@@ -112,7 +112,7 @@ async function runMyPageScenario(): Promise<Omit<ScenarioResult, "scenario">> {
   return {
     timingsMs: { total, steps },
     resultMeta: {
-      unreadContents: data.unreadContents.length,
+      incompleteContents: data.incompleteContents.length,
       payloadBytesApprox: payloadBytesApprox(data),
     },
   };

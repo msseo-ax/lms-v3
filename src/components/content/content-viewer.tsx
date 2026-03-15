@@ -52,8 +52,10 @@ export function ContentViewer({
   files,
   targetLabels,
 }: ContentViewerProps) {
-  function getAccessUrl(fileUrl: string): string {
-    return `/api/files/access?fileUrl=${encodeURIComponent(fileUrl)}`;
+  function getAccessUrl(fileUrl: string, contentFileId?: string): string {
+    const params = new URLSearchParams({ fileUrl });
+    if (contentFileId) params.set("contentFileId", contentFileId);
+    return `/api/files/access?${params}`;
   }
 
   return (
@@ -153,7 +155,7 @@ export function ContentViewer({
                           </Button>
                         ) : (
                           <Button variant="ghost" size="sm" asChild>
-                            <a href={getAccessUrl(file.fileUrl)} download={file.fileName}>
+                            <a href={getAccessUrl(file.fileUrl, file.id)} download={file.fileName}>
                               <Download className="h-4 w-4" />
                               다운로드
                             </a>
@@ -166,7 +168,7 @@ export function ContentViewer({
                   {file.fileType === "pdf" && (
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       <iframe
-                        src={getAccessUrl(file.fileUrl)}
+                        src={getAccessUrl(file.fileUrl, file.id)}
                         title={file.fileName}
                         className="w-full h-[600px]"
                       />
@@ -177,7 +179,7 @@ export function ContentViewer({
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={getAccessUrl(file.fileUrl)}
+                        src={getAccessUrl(file.fileUrl, file.id)}
                         alt={file.fileName}
                         className="w-full h-auto"
                       />
@@ -187,7 +189,7 @@ export function ContentViewer({
                   {file.fileType === "mp4" && (
                     <div className="mt-2 rounded-lg border overflow-hidden">
                       <video
-                        src={getAccessUrl(file.fileUrl)}
+                        src={getAccessUrl(file.fileUrl, file.id)}
                         controls
                         className="w-full"
                       >
@@ -199,7 +201,7 @@ export function ContentViewer({
                   {file.fileType === "audio" && (
                     <div className="mt-2 rounded-lg border p-3">
                       <audio
-                        src={getAccessUrl(file.fileUrl)}
+                        src={getAccessUrl(file.fileUrl, file.id)}
                         controls
                         className="w-full"
                       />

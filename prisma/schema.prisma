@@ -91,19 +91,21 @@ model Category {
 }
 
 model Content {
-  id          String          @id @default(uuid()) @db.Uuid
-  title       String          @db.VarChar(255)
-  body        String?         @db.Text
-  summary     String?         @db.Text
-  categoryId  String          @map("category_id") @db.Uuid
-  createdBy   String          @map("created_by") @db.Uuid
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  author      User            @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  files       ContentFile[]
-  targets     ContentTarget[]
-  readLogs    ReadLog[]
+  id                 String          @id @default(uuid()) @db.Uuid
+  title              String          @db.VarChar(255)
+  body               String?         @db.Text
+  summary            String?         @db.Text
+  categoryId         String          @map("category_id") @db.Uuid
+  createdBy          String          @map("created_by") @db.Uuid
+  minDurationSeconds Int             @default(10) @map("min_duration_seconds")
+  requireFileAccess  Boolean         @default(false) @map("require_file_access")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  category           Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  author             User            @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  files              ContentFile[]
+  targets            ContentTarget[]
+  readLogs           ReadLog[]
 
   @@index([categoryId])
   @@index([createdAt])
