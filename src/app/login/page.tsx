@@ -27,7 +27,7 @@ export default function LoginPage() {
             <GraduationCap className="h-7 w-7" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold tracking-tight">HOMES LMS</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-tight">Foundry</CardTitle>
             <CardDescription className="mt-2 text-base">
               사내 학습 관리 시스템
             </CardDescription>

@@ -123,7 +123,7 @@ function SidebarContent({
           <GraduationCap className="h-6 w-6 text-primary" />
           {!collapsed && (
             <span className="text-base font-semibold tracking-tight">
-              HOMES LMS
+              Foundry
             </span>
           )}
         </Link>
@@ -239,7 +239,7 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
         </Sheet>
         <div className="flex items-center gap-2 pl-2">
           <GraduationCap className="h-5 w-5 text-primary" />
-          <span className="text-sm font-semibold">HOMES LMS</span>
+          <span className="text-sm font-semibold">Foundry</span>
         </div>
       </header>
 

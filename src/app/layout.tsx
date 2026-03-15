@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -14,14 +14,15 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "HOMES LMS",
-  description: "HOMES 사내 학습 관리 시스템",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: "cover",
-  },
+  title: "Foundry",
+  description: "Foundry 사내 학습 관리 시스템",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
