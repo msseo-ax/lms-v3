@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
   contents,
@@ -11,6 +12,36 @@ import { getTargetLabels as getTargetLabelsFromData } from "@/lib/targeting";
 
 interface ContentDetailPageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: ContentDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const isMockMode = process.env.USE_MOCK_DB === "true";
+
+  if (isMockMode) {
+    const content = contents.find((c) => c.id === id);
+    if (!content) return {};
+    return {
+      title: content.title,
+      description: content.summary ?? undefined,
+    };
+  }
+
+  const { prisma } = await import("@/lib/prisma");
+  if (!prisma) return {};
+
+  const content = await prisma.content.findUnique({
+    where: { id },
+    select: { title: true, summary: true },
+  });
+
+  if (!content) return {};
+  return {
+    title: content.title,
+    description: content.summary ?? undefined,
+  };
 }
 
 export default async function ContentDetailPage({

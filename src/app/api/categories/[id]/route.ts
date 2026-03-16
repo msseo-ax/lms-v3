@@ -61,7 +61,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     });
 
     return ok(category);
-  } catch {
+  } catch (e) {
+    console.error("Failed to update category", e);
     return badRequest("Failed to update category");
   }
 }
@@ -91,7 +92,8 @@ export async function DELETE(_: NextRequest, context: RouteContext) {
 
     await prisma.category.delete({ where: { id } });
     return ok({ success: true });
-  } catch {
+  } catch (e) {
+    console.error("Failed to delete category", e);
     return badRequest("Failed to delete category");
   }
 }

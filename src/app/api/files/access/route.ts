@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   const contentFileId = request.nextUrl.searchParams.get("contentFileId");
   if (user && contentFileId) {
     // fire-and-forget
-    recordFileAccess(user.id, contentFileId).catch(() => {});
+    recordFileAccess(user.id, contentFileId).catch((e) => console.error("File access log failed", e));
   }
 
   const fileUrl = request.nextUrl.searchParams.get("fileUrl");

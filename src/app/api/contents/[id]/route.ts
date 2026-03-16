@@ -246,7 +246,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     });
 
     return ok(content);
-  } catch {
+  } catch (e) {
+    console.error("Failed to update content", e);
     return badRequest("Failed to update content");
   }
 }
@@ -304,7 +305,8 @@ export async function DELETE(_: NextRequest, context: RouteContext) {
 
     await prisma.content.delete({ where: { id } });
     return ok({ success: true });
-  } catch {
+  } catch (e) {
+    console.error("Failed to delete content", e);
     return badRequest("Failed to delete content");
   }
 }

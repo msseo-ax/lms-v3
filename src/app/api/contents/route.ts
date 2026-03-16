@@ -264,12 +264,13 @@ export async function POST(request: NextRequest) {
         }));
 
       if (dmUsers.length > 0) {
-        sendSlackDmBulk(dmUsers).catch(() => {});
+        sendSlackDmBulk(dmUsers).catch((e) => console.error("Slack DM failed", e));
       }
     }
 
     return ok(content);
-  } catch {
+  } catch (e) {
+    console.error("Failed to create content", e);
     return badRequest("Failed to create content");
   }
 }

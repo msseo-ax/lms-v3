@@ -177,6 +177,7 @@ export function ContentViewer({
                         src={getAccessUrl(file.fileUrl, file.id)}
                         alt={file.fileName}
                         className="w-full h-auto"
+                        loading="lazy"
                       />
                     </div>
                   )}
