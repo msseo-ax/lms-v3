@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { ReadTracker } from "./read-tracker";
 import { OfficeViewer } from "./office-viewer";
+import { VideoPlayer } from "./video-player";
 
 interface ContentViewerProps {
   content: Content;
@@ -184,15 +185,7 @@ export function ContentViewer({
 
                   {file.fileType === "mp4" && (
                     <div className="mt-2 rounded-lg border overflow-hidden">
-                      <video
-                        src={getAccessUrl(file.fileUrl, file.id)}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        className="w-full"
-                      >
-                        <track kind="captions" />
-                      </video>
+                      <VideoPlayer accessUrl={getAccessUrl(file.fileUrl, file.id)} />
                     </div>
                   )}
 
