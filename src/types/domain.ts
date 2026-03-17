@@ -1,6 +1,7 @@
 export type Role = "admin" | "user";
 export type FileType = "pdf" | "docx" | "pptx" | "xlsx" | "mp4" | "audio" | "image" | "link";
 export type TargetType = "all" | "division" | "user";
+export type QuestionType = "multiple_choice" | "short_answer";
 export type { ReadStatus } from "@/lib/read-status";
 
 export interface Division {
@@ -51,8 +52,6 @@ export interface Content {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  minDurationSeconds?: number;
-  requireFileAccess?: boolean;
   category?: Category;
   author?: User;
   files?: ContentFile[];
@@ -62,6 +61,7 @@ export interface Content {
 export interface ContentWithMeta extends Content {
   readStatus: import("@/lib/read-status").ReadStatus;
   isTargeted: boolean;
+  hasQuiz?: boolean;
   readRate?: number;
   fileCount: number;
   targetLabels: string[];
@@ -72,7 +72,6 @@ export interface ReadLog {
   contentId: string;
   userId: string;
   readAt: string;
-  durationSeconds: number;
 }
 
 export interface FileAccessLog {
@@ -80,4 +79,31 @@ export interface FileAccessLog {
   contentFileId: string;
   userId: string;
   accessedAt: string;
+}
+
+export interface Question {
+  id: string;
+  quizId: string;
+  type: QuestionType;
+  text: string;
+  options: string[] | null;
+  correctAnswer: string;
+  keywords: string[];
+  sortOrder: number;
+}
+
+export interface Quiz {
+  id: string;
+  contentId: string;
+  passingScore: number;
+  questions?: Question[];
+}
+
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  userId: string;
+  score: number;
+  passed: boolean;
+  completedAt: string;
 }

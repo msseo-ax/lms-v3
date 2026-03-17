@@ -245,13 +245,10 @@ async function runReadLogsUpsertScenario(): Promise<Omit<ScenarioResult, "scenar
           contentId: content.id,
         },
       },
-      update: {
-        durationSeconds: { increment: 1 },
-      },
+      update: {},
       create: {
         userId: user.id,
         contentId: content.id,
-        durationSeconds: 1,
       },
     })
   );

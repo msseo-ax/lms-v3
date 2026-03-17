@@ -29,6 +29,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { TargetPicker } from "@/components/admin/target-picker";
+import { QuizEditor, type QuizFormData } from "@/components/admin/quiz-editor";
 
 const RichEditor = dynamic(
   () => import("@/components/admin/rich-editor").then((mod) => mod.RichEditor),
@@ -53,6 +54,12 @@ interface ContentFormProps {
     categoryId: string;
     body: string;
     targets: { targetType: TargetType; targetId: string | null }[];
+  };
+  initialQuiz?: {
+    quizId: string;
+    enabled: boolean;
+    passingScore: number;
+    questions: QuizFormData["questions"];
   };
 }
 
@@ -160,6 +167,7 @@ export function ContentForm({
   mode = "create",
   contentId,
   initialValues,
+  initialQuiz,
 }: ContentFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState(initialValues?.title ?? "");
@@ -173,6 +181,12 @@ export function ContentForm({
   const [links, setLinks] = useState<string[]>([]);
   const [linkInput, setLinkInput] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [existingQuizId, setExistingQuizId] = useState<string | null>(initialQuiz?.quizId ?? null);
+  const [quiz, setQuiz] = useState<QuizFormData>({
+    enabled: initialQuiz?.enabled ?? false,
+    passingScore: initialQuiz?.passingScore ?? 100,
+    questions: initialQuiz?.questions ?? [],
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -330,10 +344,66 @@ export function ContentForm({
         }),
       });
 
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { id?: string; error?: string };
       if (!response.ok) {
         alert(data.error ?? "저장에 실패했습니다.");
         return;
+      }
+
+      // Save/update/delete quiz
+      const savedContentId = contentId ?? data.id;
+      if (savedContentId) {
+        const quizQuestions = quiz.questions.map((q) => ({
+          type: q.type,
+          text: q.text,
+          options: q.type === "multiple_choice" ? q.options : undefined,
+          correctAnswer: q.correctAnswer,
+          keywords: q.type === "short_answer" ? q.keywords : [],
+        }));
+
+        if (quiz.enabled && quiz.questions.length > 0) {
+          if (existingQuizId) {
+            // Update existing quiz
+            const quizResponse = await fetch(`/api/quizzes/${existingQuizId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                passingScore: quiz.passingScore,
+                questions: quizQuestions,
+              }),
+            });
+            if (!quizResponse.ok) {
+              const quizData = (await quizResponse.json()) as { error?: string };
+              console.error("Quiz update failed:", quizData.error);
+            }
+          } else {
+            // Create new quiz
+            const quizResponse = await fetch("/api/quizzes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contentId: savedContentId,
+                passingScore: quiz.passingScore,
+                questions: quizQuestions,
+              }),
+            });
+            if (quizResponse.ok) {
+              const created = (await quizResponse.json()) as { id?: string };
+              if (created.id) setExistingQuizId(created.id);
+            } else {
+              const quizData = (await quizResponse.json()) as { error?: string };
+              console.error("Quiz save failed:", quizData.error);
+            }
+          }
+        } else if (!quiz.enabled && existingQuizId) {
+          // Delete quiz when disabled
+          const quizResponse = await fetch(`/api/quizzes/${existingQuizId}`, {
+            method: "DELETE",
+          });
+          if (quizResponse.ok) {
+            setExistingQuizId(null);
+          }
+        }
       }
 
       alert(mode === "edit" ? "콘텐츠가 수정되었습니다." : "콘텐츠가 등록되었습니다.");
@@ -546,6 +616,10 @@ export function ContentForm({
               </ul>
             )}
           </div>
+
+          <Separator />
+
+          <QuizEditor value={quiz} onChange={setQuiz} />
 
           <Separator />
 

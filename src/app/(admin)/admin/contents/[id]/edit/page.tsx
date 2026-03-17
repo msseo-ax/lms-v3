@@ -6,6 +6,8 @@ import {
   contentTargets,
   divisions,
   users,
+  quizzes,
+  questions,
 } from "@/lib/mock-db";
 import type { TargetType } from "@/types/domain";
 
@@ -35,6 +37,26 @@ export default async function AdminContentEditPage({
         targetId: item.targetId,
       }));
 
+    const mockQuiz = quizzes.find((q) => q.contentId === id);
+    const mockQuizData = mockQuiz
+      ? {
+          quizId: mockQuiz.id,
+          enabled: true,
+          passingScore: mockQuiz.passingScore,
+          questions: questions
+            .filter((q) => q.quizId === mockQuiz.id)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((q) => ({
+              id: q.id,
+              type: q.type as "multiple_choice" | "short_answer",
+              text: q.text,
+              options: q.options ?? ["", "", "", ""],
+              correctAnswer: q.correctAnswer,
+              keywords: q.keywords ?? [],
+            })),
+        }
+      : undefined;
+
     return (
         <ContentForm
           categories={categories}
@@ -48,6 +70,7 @@ export default async function AdminContentEditPage({
           body: content.body ?? "",
           targets,
         }}
+        initialQuiz={mockQuizData}
       />
     );
   }
@@ -58,7 +81,10 @@ export default async function AdminContentEditPage({
   const [content, dbCategories, dbDivisions, dbUsers] = await Promise.all([
     prisma.content.findUnique({
       where: { id },
-      include: { targets: true },
+      include: {
+        targets: true,
+        quiz: { include: { questions: { orderBy: { sortOrder: "asc" } } } },
+      },
     }),
     prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.division.findMany({ orderBy: { name: "asc" } }),
@@ -66,6 +92,22 @@ export default async function AdminContentEditPage({
   ]);
 
   if (!content) notFound();
+
+  const quizData = content.quiz
+    ? {
+        quizId: content.quiz.id,
+        enabled: true,
+        passingScore: content.quiz.passingScore,
+        questions: content.quiz.questions.map((q) => ({
+          id: q.id,
+          type: q.type as "multiple_choice" | "short_answer",
+          text: q.text,
+          options: (q.options as string[] | null) ?? ["", "", "", ""],
+          correctAnswer: q.correctAnswer,
+          keywords: q.keywords ?? [],
+        })),
+      }
+    : undefined;
 
   return (
     <ContentForm
@@ -85,6 +127,7 @@ export default async function AdminContentEditPage({
             targetId: item.targetId,
           })),
       }}
+      initialQuiz={quizData}
     />
   );
 }

@@ -6,9 +6,13 @@ import {
   categories,
   users,
   getTargetLabels,
+  getQuizForContent,
+  quizAttempts,
+  getMockCurrentUser,
 } from "@/lib/mock-db";
 import { ContentViewer } from "@/components/content/content-viewer";
 import { getTargetLabels as getTargetLabelsFromData } from "@/lib/targeting";
+import { getCurrentUserFromMiddlewareHeader } from "@/lib/auth";
 
 interface ContentDetailPageProps {
   params: Promise<{ id: string }>;
@@ -60,6 +64,21 @@ export default async function ContentDetailPage({
     const files = contentFiles.filter((f) => f.contentId === content.id);
     const targetLabels = getTargetLabels(content.id);
 
+    const currentUser = getMockCurrentUser();
+    const quiz = getQuizForContent(content.id);
+    const quizProp = quiz
+      ? {
+          id: quiz.id,
+          passingScore: quiz.passingScore,
+          lastAttempt: (() => {
+            const attempts = quizAttempts
+              .filter((a) => a.quizId === quiz.id && a.userId === currentUser.id)
+              .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+            return attempts.length > 0 ? { score: attempts[0].score, passed: attempts[0].passed } : null;
+          })(),
+        }
+      : null;
+
     return (
       <ContentViewer
         content={content}
@@ -67,12 +86,15 @@ export default async function ContentDetailPage({
         author={author}
         files={files}
         targetLabels={targetLabels}
+        quiz={quizProp}
       />
     );
   }
 
   const { prisma } = await import("@/lib/prisma");
   if (!prisma) redirect("/");
+
+  const authUser = await getCurrentUserFromMiddlewareHeader();
 
   const content = await prisma.content.findUnique({
     where: { id },
@@ -81,6 +103,18 @@ export default async function ContentDetailPage({
       author: true,
       files: true,
       targets: true,
+      quiz: {
+        include: {
+          attempts: authUser
+            ? {
+                where: { userId: authUser.id },
+                orderBy: { completedAt: "desc" as const },
+                take: 1,
+                select: { score: true, passed: true },
+              }
+            : false,
+        },
+      },
     },
   });
 
@@ -98,6 +132,16 @@ export default async function ContentDetailPage({
     dbDivisions,
     dbUsers
   );
+
+  const quizProp = content.quiz
+    ? {
+        id: content.quiz.id,
+        passingScore: content.quiz.passingScore,
+        lastAttempt: content.quiz.attempts?.[0]
+          ? { score: content.quiz.attempts[0].score, passed: content.quiz.attempts[0].passed }
+          : null,
+      }
+    : null;
 
   return (
     <ContentViewer
@@ -135,6 +179,7 @@ export default async function ContentDetailPage({
         fileSize: file.fileSize,
       }))}
       targetLabels={targetLabels}
+      quiz={quizProp}
     />
   );
 }

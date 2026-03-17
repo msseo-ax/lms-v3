@@ -16,9 +16,10 @@ async function getCurrentUserInternal(): Promise<User | null> {
   const warmupPromise = Promise.all([warmSupabaseJwks(), warmPrismaConnection()]);
   const supabase = await createClient();
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
-  if (claimsError || !claimsData?.claims) return null;
+    if (claimsError || !claimsData?.claims) return null;
 
   const claimEmail = claimsData.claims.email;
+
   if (typeof claimEmail !== "string" || !claimEmail) return null;
 
   await warmupPromise;

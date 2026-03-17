@@ -21,6 +21,7 @@ import {
 import { ReadTracker } from "./read-tracker";
 import { OfficeViewer } from "./office-viewer";
 import { VideoPlayer } from "./video-player";
+import { QuizPanel } from "./quiz-panel";
 
 interface ContentViewerProps {
   content: Content;
@@ -28,6 +29,11 @@ interface ContentViewerProps {
   author: User;
   files: ContentFile[];
   targetLabels: string[];
+  quiz?: {
+    id: string;
+    passingScore: number;
+    lastAttempt?: { score: number; passed: boolean } | null;
+  } | null;
 }
 
 function getFileIcon(fileType: ContentFile["fileType"]) {
@@ -57,6 +63,7 @@ export function ContentViewer({
   author,
   files,
   targetLabels,
+  quiz,
 }: ContentViewerProps) {
   function getAccessUrl(fileUrl: string, contentFileId?: string): string {
     const params = new URLSearchParams({ fileUrl });
@@ -212,6 +219,14 @@ export function ContentViewer({
             </div>
           </div>
         </>
+      )}
+
+      {quiz && (
+        <QuizPanel
+          quizId={quiz.id}
+          passingScore={quiz.passingScore}
+          lastAttempt={quiz.lastAttempt}
+        />
       )}
     </div>
   );

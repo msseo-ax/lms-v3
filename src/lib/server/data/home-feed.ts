@@ -105,7 +105,16 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
         targets: true,
         readLogs: {
           where: { userId: user.id },
-          select: { userId: true, durationSeconds: true },
+          select: { userId: true },
+        },
+        quiz: {
+          include: {
+            attempts: {
+              where: { userId: user.id, passed: true },
+              select: { id: true },
+              take: 1,
+            },
+          },
         },
         _count: {
           select: { files: true },
@@ -152,35 +161,16 @@ async function getHomeFeedDataInternal(options?: HomeFeedOptions): Promise<HomeF
       : Promise.resolve([]),
   ]);
 
-  // Batch query: which contents has this user accessed files for?
-  const contentIdsWithFiles = dbContents
-    .filter((c) => c.requireFileAccess)
-    .map((c) => c.id);
-
-  const fileAccessSet = new Set<string>();
-  if (contentIdsWithFiles.length > 0) {
-    const accessLogs = await prisma.fileAccessLog.findMany({
-      where: {
-        userId: user.id,
-        contentFile: { contentId: { in: contentIdsWithFiles } },
-      },
-      select: { contentFile: { select: { contentId: true } } },
-      distinct: ["contentFileId"],
-    });
-    accessLogs.forEach((fa) => fileAccessSet.add(fa.contentFile.contentId));
-  }
-
   const feedData: ContentWithMeta[] = dbContents
     .map((content) => {
       const category = dbCategories.find((item) => item.id === content.categoryId);
       const isTargeted = isTargetedForUser(content.targets, userForTargeting);
-      const readLog = content.readLogs[0];
+      const hasQuiz = !!content.quiz;
+      const hasPassedQuiz = (content.quiz?.attempts?.length ?? 0) > 0;
       const readStatus = computeReadStatus({
         hasReadLog: content.readLogs.length > 0,
-        durationSeconds: readLog?.durationSeconds ?? 0,
-        minDurationSeconds: content.minDurationSeconds,
-        requireFileAccess: content.requireFileAccess,
-        hasFileAccess: fileAccessSet.has(content.id),
+        hasQuiz,
+        hasPassedQuiz,
       });
 
       return {

@@ -63,8 +63,8 @@ export async function GET(request: Request) {
               },
             });
           }
-        } catch {
-          /* DB sync is best-effort */
+        } catch (e) {
+          console.error("[Callback] DB upsert error:", e);
         }
       }
 

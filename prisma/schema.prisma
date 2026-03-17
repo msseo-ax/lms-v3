@@ -33,6 +33,11 @@ enum TargetType {
   user
 }
 
+enum QuestionType {
+  multiple_choice
+  short_answer
+}
+
 // ── Organization ───────────────────────────────
 
 model Division {
@@ -73,6 +78,7 @@ model User {
   contents       Content[]
   readLogs       ReadLog[]
   fileAccessLogs FileAccessLog[]
+  quizAttempts   QuizAttempt[]
 
   @@index([divisionId])
   @@index([teamId])
@@ -93,21 +99,20 @@ model Category {
 }
 
 model Content {
-  id                 String          @id @default(uuid()) @db.Uuid
-  title              String          @db.VarChar(255)
-  body               String?         @db.Text
-  summary            String?         @db.Text
-  categoryId         String          @map("category_id") @db.Uuid
-  createdBy          String          @map("created_by") @db.Uuid
-  minDurationSeconds Int             @default(10) @map("min_duration_seconds")
-  requireFileAccess  Boolean         @default(false) @map("require_file_access")
-  createdAt          DateTime        @default(now()) @map("created_at")
-  updatedAt          DateTime        @updatedAt @map("updated_at")
-  category           Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  author             User            @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  files              ContentFile[]
-  targets            ContentTarget[]
-  readLogs           ReadLog[]
+  id         String          @id @default(uuid()) @db.Uuid
+  title      String          @db.VarChar(255)
+  body       String?         @db.Text
+  summary    String?         @db.Text
+  categoryId String          @map("category_id") @db.Uuid
+  createdBy  String          @map("created_by") @db.Uuid
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  category   Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  author     User            @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  files      ContentFile[]
+  targets    ContentTarget[]
+  readLogs   ReadLog[]
+  quiz       Quiz?
 
   @@index([categoryId])
   @@index([createdAt])
@@ -144,13 +149,12 @@ model ContentTarget {
 // ── Tracking ───────────────────────────────────
 
 model ReadLog {
-  id              String   @id @default(uuid()) @db.Uuid
-  contentId       String   @map("content_id") @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  readAt          DateTime @default(now()) @map("read_at")
-  durationSeconds Int      @default(0) @map("duration_seconds")
-  content         Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid()) @db.Uuid
+  contentId String   @map("content_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  readAt    DateTime @default(now()) @map("read_at")
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, contentId])
   @@index([contentId])
@@ -168,4 +172,65 @@ model FileAccessLog {
   @@index([contentFileId])
   @@index([userId])
   @@map("file_access_logs")
+}
+
+// ── Quiz ──────────────────────────────────────
+
+model Quiz {
+  id           String        @id @default(uuid()) @db.Uuid
+  contentId    String        @unique @map("content_id") @db.Uuid
+  passingScore Int           @default(80) @map("passing_score")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  content      Content       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  attempts     QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id            String       @id @default(uuid()) @db.Uuid
+  quizId        String       @map("quiz_id") @db.Uuid
+  type          QuestionType
+  text          String       @db.Text
+  options       Json?
+  correctAnswer String       @map("correct_answer") @db.Text
+  keywords      String[]
+  sortOrder     Int          @default(0) @map("sort_order")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  quiz          Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers       QuizAnswer[]
+
+  @@index([quizId])
+  @@map("questions")
+}
+
+model QuizAttempt {
+  id          String       @id @default(uuid()) @db.Uuid
+  quizId      String       @map("quiz_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  score       Int
+  passed      Boolean
+  completedAt DateTime     @default(now()) @map("completed_at")
+  quiz        Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers     QuizAnswer[]
+
+  @@index([quizId])
+  @@index([userId])
+  @@map("quiz_attempts")
+}
+
+model QuizAnswer {
+  id         String      @id @default(uuid()) @db.Uuid
+  attemptId  String      @map("attempt_id") @db.Uuid
+  questionId String      @map("question_id") @db.Uuid
+  answer     String      @db.Text
+  isCorrect  Boolean     @map("is_correct")
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question   Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@map("quiz_answers")
 }

@@ -1,8 +1,9 @@
 import type {
   User, Division, Category, Content,
   ContentFile, ContentTarget, ReadLog, FileAccessLog,
+  Quiz, Question, QuizAttempt,
 } from "@/types/domain";
-import { computeReadStatus, computeMinDuration, type ReadStatus } from "@/lib/read-status";
+import { computeReadStatus, type ReadStatus } from "@/lib/read-status";
 
 export const divisions: Division[] = [
   { id: "div-1", name: "경영본부" },
@@ -26,7 +27,7 @@ export const categories: Category[] = [
   { id: "cat-4", name: "성장", slug: "growth", sortOrder: 4 },
 ];
 
-export const contents: (Content & { minDurationSeconds: number; requireFileAccess: boolean })[] = [
+export const contents: Content[] = [
   {
     id: "content-1",
     title: "2026 HOMES 비전 및 미션 스테이트먼트",
@@ -36,8 +37,6 @@ export const contents: (Content & { minDurationSeconds: number; requireFileAcces
     createdBy: "user-admin",
     createdAt: "2026-03-01T09:00:00Z",
     updatedAt: "2026-03-01T09:00:00Z",
-    minDurationSeconds: 20,
-    requireFileAccess: true,
   },
   {
     id: "content-2",
@@ -48,8 +47,6 @@ export const contents: (Content & { minDurationSeconds: number; requireFileAcces
     createdBy: "user-admin",
     createdAt: "2026-03-03T10:00:00Z",
     updatedAt: "2026-03-03T10:00:00Z",
-    minDurationSeconds: 20,
-    requireFileAccess: true,
   },
   {
     id: "content-3",
@@ -60,8 +57,6 @@ export const contents: (Content & { minDurationSeconds: number; requireFileAcces
     createdBy: "user-admin",
     createdAt: "2026-03-05T14:00:00Z",
     updatedAt: "2026-03-05T14:00:00Z",
-    minDurationSeconds: 10,
-    requireFileAccess: true,
   },
   {
     id: "content-4",
@@ -72,8 +67,6 @@ export const contents: (Content & { minDurationSeconds: number; requireFileAcces
     createdBy: "user-admin",
     createdAt: "2026-02-15T09:00:00Z",
     updatedAt: "2026-02-15T09:00:00Z",
-    minDurationSeconds: 10,
-    requireFileAccess: true,
   },
   {
     id: "content-5",
@@ -84,8 +77,6 @@ export const contents: (Content & { minDurationSeconds: number; requireFileAcces
     createdBy: "user-admin",
     createdAt: "2026-03-06T11:00:00Z",
     updatedAt: "2026-03-06T11:00:00Z",
-    minDurationSeconds: 10,
-    requireFileAccess: false,
   },
   {
     id: "content-6",
@@ -96,8 +87,6 @@ export const contents: (Content & { minDurationSeconds: number; requireFileAcces
     createdBy: "user-admin",
     createdAt: "2026-03-07T16:00:00Z",
     updatedAt: "2026-03-07T16:00:00Z",
-    minDurationSeconds: 10,
-    requireFileAccess: true,
   },
 ];
 
@@ -122,17 +111,78 @@ export const contentTargets: ContentTarget[] = [
 ];
 
 export const readLogs: ReadLog[] = [
-  { id: "log-1", contentId: "content-1", userId: "user-1", readAt: "2026-03-02T10:30:00Z", durationSeconds: 240 },
-  { id: "log-2", contentId: "content-1", userId: "user-2", readAt: "2026-03-02T11:00:00Z", durationSeconds: 180 },
-  { id: "log-3", contentId: "content-4", userId: "user-1", readAt: "2026-02-16T09:00:00Z", durationSeconds: 600 },
-  { id: "log-4", contentId: "content-5", userId: "user-1", readAt: "2026-03-07T08:00:00Z", durationSeconds: 120 },
-  { id: "log-5", contentId: "content-5", userId: "user-3", readAt: "2026-03-07T09:30:00Z", durationSeconds: 90 },
+  { id: "log-1", contentId: "content-1", userId: "user-1", readAt: "2026-03-02T10:30:00Z" },
+  { id: "log-2", contentId: "content-1", userId: "user-2", readAt: "2026-03-02T11:00:00Z" },
+  { id: "log-3", contentId: "content-4", userId: "user-1", readAt: "2026-02-16T09:00:00Z" },
+  { id: "log-4", contentId: "content-5", userId: "user-1", readAt: "2026-03-07T08:00:00Z" },
+  { id: "log-5", contentId: "content-5", userId: "user-3", readAt: "2026-03-07T09:30:00Z" },
 ];
 
 export const fileAccessLogs: FileAccessLog[] = [
   { id: "flog-1", contentFileId: "file-1", userId: "user-1", accessedAt: "2026-03-02T10:32:00Z" },
   { id: "flog-2", contentFileId: "file-2", userId: "user-1", accessedAt: "2026-03-02T10:35:00Z" },
 ];
+
+// ── Quiz Mock Data ────────────────────────────
+
+export const quizzes: Quiz[] = [
+  {
+    id: "quiz-1",
+    contentId: "content-1",
+    passingScore: 80,
+  },
+  {
+    id: "quiz-2",
+    contentId: "content-2",
+    passingScore: 80,
+  },
+];
+
+export const questions: Question[] = [
+  {
+    id: "q-1",
+    quizId: "quiz-1",
+    type: "multiple_choice",
+    text: "HOMES의 2026년 핵심 전략은 몇 가지인가요?",
+    options: ["2가지", "3가지", "4가지", "5가지"],
+    correctAnswer: "3가지",
+    keywords: [],
+    sortOrder: 0,
+  },
+  {
+    id: "q-2",
+    quizId: "quiz-1",
+    type: "short_answer",
+    text: "HOMES가 기술 혁신을 통해 창출하려는 것은 무엇인가요?",
+    options: null,
+    correctAnswer: "새로운 가치",
+    keywords: ["가치", "새로운 가치"],
+    sortOrder: 1,
+  },
+  {
+    id: "q-3",
+    quizId: "quiz-2",
+    type: "multiple_choice",
+    text: "자산관리 프로세스 v2.0의 주요 변경사항이 아닌 것은?",
+    options: ["승인 프로세스 간소화", "디지털 서명 도입", "AI 자동화", "실시간 현황 대시보드"],
+    correctAnswer: "AI 자동화",
+    keywords: [],
+    sortOrder: 0,
+  },
+];
+
+export const quizAttempts: QuizAttempt[] = [
+  {
+    id: "attempt-1",
+    quizId: "quiz-1",
+    userId: "user-1",
+    score: 100,
+    passed: true,
+    completedAt: "2026-03-02T11:00:00Z",
+  },
+];
+
+// ── Helper Functions ──────────────────────────
 
 export function getMockCurrentUser(): User {
   return users[0];
@@ -157,24 +207,28 @@ export function getTargetLabels(contentId: string): string[] {
   });
 }
 
+export function getQuizForContent(contentId: string): Quiz | undefined {
+  return quizzes.find((q) => q.contentId === contentId);
+}
+
+export function getQuestionsForQuiz(quizId: string): Question[] {
+  return questions.filter((q) => q.quizId === quizId).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function hasUserPassedQuiz(contentId: string, userId: string): boolean {
+  const quiz = getQuizForContent(contentId);
+  if (!quiz) return false;
+  return quizAttempts.some((a) => a.quizId === quiz.id && a.userId === userId && a.passed);
+}
+
 export function getContentReadStatus(contentId: string, userId: string): ReadStatus {
-  const content = contents.find((c) => c.id === contentId);
   const readLog = readLogs.find((l) => l.contentId === contentId && l.userId === userId);
-  const files = contentFiles.filter((f) => f.contentId === contentId);
-  const minDuration = content?.minDurationSeconds ?? computeMinDuration(content?.body ?? null);
-  const requireFileAccess = content?.requireFileAccess ?? files.length > 0;
-  const hasFileAccess = requireFileAccess
-    ? fileAccessLogs.some((fa) =>
-        fa.userId === userId && files.some((f) => f.id === fa.contentFileId)
-      )
-    : false;
+  const quiz = getQuizForContent(contentId);
 
   return computeReadStatus({
     hasReadLog: !!readLog,
-    durationSeconds: readLog?.durationSeconds ?? 0,
-    minDurationSeconds: minDuration,
-    requireFileAccess,
-    hasFileAccess,
+    hasQuiz: !!quiz,
+    hasPassedQuiz: hasUserPassedQuiz(contentId, userId),
   });
 }
 

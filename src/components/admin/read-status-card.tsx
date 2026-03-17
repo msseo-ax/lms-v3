@@ -101,7 +101,7 @@ export function ReadStatusCard({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Eye className="h-3 w-3" />
-            {completedCount}명 완료{readingCount > 0 && ` · ${readingCount}명 열람중`}
+            {completedCount}명 완료{readingCount > 0 && ` · ${readingCount}명 퀴즈 미통과`}
           </span>
           <span>{totalCount}명 대상</span>
         </div>

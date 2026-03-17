@@ -8,10 +8,10 @@ export async function POST(request: NextRequest) {
   if (!user) return unauthorized();
 
   const body = await request.json();
-  const { contentId, durationSeconds } = body;
+  const { contentId } = body;
 
-  if (!contentId || typeof durationSeconds !== "number") {
-    return badRequest("contentId and durationSeconds are required");
+  if (!contentId) {
+    return badRequest("contentId is required");
   }
 
   const isMockMode = process.env.USE_MOCK_DB === "true";
@@ -20,15 +20,12 @@ export async function POST(request: NextRequest) {
     const existing = readLogs.find(
       (l) => l.contentId === contentId && l.userId === user.id
     );
-    if (existing) {
-      existing.durationSeconds += durationSeconds;
-    } else {
+    if (!existing) {
       readLogs.push({
         id: `log-${Date.now()}`,
         contentId,
         userId: user.id,
         readAt: new Date().toISOString(),
-        durationSeconds,
       });
     }
     return ok({ success: true });
@@ -41,13 +38,10 @@ export async function POST(request: NextRequest) {
     where: {
       userId_contentId: { userId: user.id, contentId },
     },
-    update: {
-      durationSeconds: { increment: durationSeconds },
-    },
+    update: {},
     create: {
       contentId,
       userId: user.id,
-      durationSeconds,
     },
   });
 

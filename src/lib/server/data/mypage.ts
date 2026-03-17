@@ -159,7 +159,16 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
         files: true,
         readLogs: {
           where: { userId: currentUserId },
-          select: { userId: true, durationSeconds: true },
+          select: { userId: true },
+        },
+        quiz: {
+          include: {
+            attempts: {
+              where: { userId: currentUserId, passed: true },
+              select: { id: true },
+              take: 1,
+            },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -196,32 +205,13 @@ async function getMyPageDataInternal(options?: MyPageOptions): Promise<MyPageDat
       : Promise.resolve([]),
   ]);
 
-  // Batch FileAccessLog check
-  const contentIdsRequiringFileAccess = targetedContents
-    .filter((c) => c.requireFileAccess)
-    .map((c) => c.id);
-
-  const fileAccessSet = new Set<string>();
-  if (contentIdsRequiringFileAccess.length > 0) {
-    const accessLogs = await prisma.fileAccessLog.findMany({
-      where: {
-        userId: currentUserId,
-        contentFile: { contentId: { in: contentIdsRequiringFileAccess } },
-      },
-      select: { contentFile: { select: { contentId: true } } },
-      distinct: ["contentFileId"],
-    });
-    accessLogs.forEach((fa) => fileAccessSet.add(fa.contentFile.contentId));
-  }
-
   const contentsWithStatus = targetedContents.map((content) => {
-    const readLog = content.readLogs[0];
+    const hasQuiz = !!content.quiz;
+    const hasPassedQuiz = (content.quiz?.attempts?.length ?? 0) > 0;
     const status = computeReadStatus({
       hasReadLog: content.readLogs.length > 0,
-      durationSeconds: readLog?.durationSeconds ?? 0,
-      minDurationSeconds: content.minDurationSeconds,
-      requireFileAccess: content.requireFileAccess,
-      hasFileAccess: fileAccessSet.has(content.id),
+      hasQuiz,
+      hasPassedQuiz,
     });
     return { ...content, readStatus: status };
   });

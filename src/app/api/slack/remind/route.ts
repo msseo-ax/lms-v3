@@ -57,18 +57,18 @@ export async function POST(request: NextRequest) {
     const { prisma } = await import("@/lib/prisma");
     if (!prisma) return badRequest("Database is not configured");
 
-    const [content, dbTargets, dbUsers, dbReadLogs, dbFileAccessLogs] = await Promise.all([
+    const [content, dbTargets, dbUsers, dbReadLogs, dbQuizAttempts] = await Promise.all([
       prisma.content.findUnique({
         where: { id: contentId },
-        select: { id: true, title: true, minDurationSeconds: true, requireFileAccess: true },
+        select: { id: true, title: true, quiz: { select: { id: true } } },
       }),
       prisma.contentTarget.findMany({ where: { contentId } }),
       prisma.user.findMany({
         select: { id: true, name: true, divisionId: true, teamId: true, slackUserId: true },
       }),
-      prisma.readLog.findMany({ where: { contentId }, select: { userId: true, durationSeconds: true } }),
-      prisma.fileAccessLog.findMany({
-        where: { contentFile: { contentId } },
+      prisma.readLog.findMany({ where: { contentId }, select: { userId: true } }),
+      prisma.quizAttempt.findMany({
+        where: { quiz: { contentId }, passed: true },
         select: { userId: true },
       }),
     ]);
@@ -76,16 +76,15 @@ export async function POST(request: NextRequest) {
     if (!content) return badRequest("Content not found");
 
     const targetUserIds = getTargetUserIds(dbTargets, dbUsers);
-    const readLogMap = new Map(dbReadLogs.map((log) => [log.userId, log.durationSeconds]));
-    const fileAccessUserIds = new Set(dbFileAccessLogs.map((fa) => fa.userId));
+    const readLogUserIds = new Set(dbReadLogs.map((log) => log.userId));
+    const quizPassUserIds = new Set(dbQuizAttempts.map((a) => a.userId));
+    const hasQuiz = !!content.quiz;
 
     const incompleteUserIds = targetUserIds.filter((id) => {
       const status = computeReadStatus({
-        hasReadLog: readLogMap.has(id),
-        durationSeconds: readLogMap.get(id) ?? 0,
-        minDurationSeconds: content.minDurationSeconds,
-        requireFileAccess: content.requireFileAccess,
-        hasFileAccess: fileAccessUserIds.has(id),
+        hasReadLog: readLogUserIds.has(id),
+        hasQuiz,
+        hasPassedQuiz: quizPassUserIds.has(id),
       });
       return status !== "completed";
     });

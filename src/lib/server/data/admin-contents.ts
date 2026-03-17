@@ -114,6 +114,7 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
     include: {
       category: true,
       targets: true,
+      quiz: { select: { id: true, contentId: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -123,14 +124,14 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
   }
 
   const contentIds = dbContents.map((content) => content.id);
-  const [dbReadLogs, dbFileAccessLogs, allUsersForTargetCount] = await Promise.all([
+  const [dbReadLogs, dbQuizAttempts, allUsersForTargetCount] = await Promise.all([
     db.readLog.findMany({
       where: { contentId: { in: contentIds } },
-      select: { contentId: true, userId: true, durationSeconds: true },
+      select: { contentId: true, userId: true },
     }),
-    db.fileAccessLog.findMany({
-      where: { contentFile: { contentId: { in: contentIds } } },
-      select: { userId: true, contentFile: { select: { contentId: true } } },
+    db.quizAttempt.findMany({
+      where: { quiz: { contentId: { in: contentIds } }, passed: true },
+      select: { userId: true, quiz: { select: { contentId: true } } },
     }),
     db.user.findMany({
       select: {
@@ -141,19 +142,19 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
     }),
   ]);
 
-  // ReadLog: contentId -> userId -> durationSeconds
-  const readLogMap = new Map<string, Map<string, number>>();
+  // ReadLog: contentId -> Set<userId>
+  const readLogMap = new Map<string, Set<string>>();
   dbReadLogs.forEach((log) => {
-    if (!readLogMap.has(log.contentId)) readLogMap.set(log.contentId, new Map());
-    readLogMap.get(log.contentId)!.set(log.userId, log.durationSeconds);
+    if (!readLogMap.has(log.contentId)) readLogMap.set(log.contentId, new Set());
+    readLogMap.get(log.contentId)!.add(log.userId);
   });
 
-  // FileAccessLog: contentId -> Set<userId>
-  const fileAccessMap = new Map<string, Set<string>>();
-  dbFileAccessLogs.forEach((fa) => {
-    const cid = fa.contentFile.contentId;
-    if (!fileAccessMap.has(cid)) fileAccessMap.set(cid, new Set());
-    fileAccessMap.get(cid)!.add(fa.userId);
+  // Quiz pass: contentId -> Set<userId>
+  const quizPassMap = new Map<string, Set<string>>();
+  dbQuizAttempts.forEach((a: { userId: string; quiz: { contentId: string } }) => {
+    const cid = a.quiz.contentId;
+    if (!quizPassMap.has(cid)) quizPassMap.set(cid, new Set());
+    quizPassMap.get(cid)!.add(a.userId);
   });
   const totalUserCount = allUsersForTargetCount.length;
   const allUserIds = new Set<string>();
@@ -215,19 +216,24 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
     )
   );
 
+  // Quiz content IDs
+  const quizContentIds = new Set(
+    dbContents.filter((c) => c.quiz).map((c) => c.id)
+  );
+
   return dbContents.map((content, index) => {
     const targetCount = targetCounts[index] ?? 0;
-    const userReadLogs = readLogMap.get(content.id) ?? new Map<string, number>();
-    const userFileAccess = fileAccessMap.get(content.id) ?? new Set<string>();
+    const userReadLogs = readLogMap.get(content.id) ?? new Set<string>();
+    const userQuizPasses = quizPassMap.get(content.id) ?? new Set<string>();
+    const hasQuiz = quizContentIds.has(content.id);
 
     // Count completed users among all target users
     let completedCount = 0;
-    // We need actual target user IDs to check per-user status
     const allUserTargetIds = new Set<string>();
-    const isAllTarget = content.targets.some((t) => t.targetType === "all");
+    const isAllTarget = content.targets.some((t: { targetType: string }) => t.targetType === "all");
 
     if (isAllTarget) {
-      allUsersForTargetCount.forEach((u) => allUserTargetIds.add(u.id));
+      allUsersForTargetCount.forEach((u: { id: string }) => allUserTargetIds.add(u.id));
     } else {
       for (const target of content.targets) {
         if (!target.targetId) continue;
@@ -246,10 +252,8 @@ async function getAdminContentsDataInternal(take = 50, cursor?: string): Promise
     for (const uid of Array.from(allUserTargetIds)) {
       const status = computeReadStatus({
         hasReadLog: userReadLogs.has(uid),
-        durationSeconds: userReadLogs.get(uid) ?? 0,
-        minDurationSeconds: content.minDurationSeconds,
-        requireFileAccess: content.requireFileAccess,
-        hasFileAccess: userFileAccess.has(uid),
+        hasQuiz,
+        hasPassedQuiz: userQuizPasses.has(uid),
       });
       if (status === "completed") completedCount++;
     }
