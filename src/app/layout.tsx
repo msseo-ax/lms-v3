@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Foundry",
-  description: "Foundry 사내 학습 관리 시스템",
+  title: "HALO",
+  description: "HALO 사내 학습 관리 시스템",
 };
 
 export const viewport: Viewport = {
