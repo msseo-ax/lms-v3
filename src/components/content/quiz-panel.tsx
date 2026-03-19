@@ -47,7 +47,7 @@ interface SubmitResult {
   }>;
 }
 
-export function QuizPanel({ quizId, passingScore, lastAttempt }: QuizPanelProps) {
+export function QuizPanel({ quizId, passingScore: _passingScore, lastAttempt }: QuizPanelProps) {
   const [mode, setMode] = useState<"idle" | "taking" | "result">("idle");
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
