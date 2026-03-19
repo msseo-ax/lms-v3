@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const prefix = (process.env.S3_UPLOAD_PREFIX ?? "uploads").replace(/^\/+|\/+$/g, "");
+  const prefix = (process.env.S3_UPLOAD_PREFIX ?? "lms/uploads").replace(/^\/+|\/+$/g, "");
   const key = `${prefix}/${Date.now()}-${crypto.randomUUID()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
   const command = new PutObjectCommand({

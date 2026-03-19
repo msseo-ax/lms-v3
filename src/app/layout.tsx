@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "HALO",
+  title: "HALO - Homes Academy for Learning & Onboarding",
   description: "HALO 사내 학습 관리 시스템",
 };
 

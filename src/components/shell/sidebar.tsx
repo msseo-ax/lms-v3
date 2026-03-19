@@ -122,9 +122,10 @@ function SidebarContent({
         <Link href="/" className="flex items-center gap-2">
           <GraduationCap className="h-6 w-6 text-primary" />
           {!collapsed && (
-            <span className="text-base font-semibold tracking-tight">
-              HALO
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-semibold tracking-tight">HALO</span>
+              <span className="text-[10px] text-muted-foreground leading-tight">Homes Academy for Learning & Onboarding</span>
+            </div>
           )}
         </Link>
         {onToggleCollapse && (
@@ -239,7 +240,10 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
         </Sheet>
         <div className="flex items-center gap-2 pl-2">
           <GraduationCap className="h-5 w-5 text-primary" />
-          <span className="text-sm font-semibold">HALO</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold">HALO</span>
+            <span className="text-[9px] text-muted-foreground leading-tight">Homes Academy for Learning & Onboarding</span>
+          </div>
         </div>
       </header>
 
